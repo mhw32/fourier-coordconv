@@ -71,7 +71,7 @@ if __name__ == "__main__":
             data = data.to(device)
 
             out = model(data)
-            loss = elbo(*out, dist=DATA_DIST[args.dataset])
+            loss = elbo(out, dist=DATA_DIST[args.dataset])
             loss_meter.update(-loss.item(), batch_size)
 
             optimizer.zero_grad()

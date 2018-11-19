@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ..utils import (
+from .utils import (
     get_conv_output_dim,
     bernoulli_log_pdf,
     logistic_256_log_pdf,
@@ -76,7 +76,7 @@ class AddCoordinates(object):
 
         coords = torch.unsqueeze(coords, dim=0).repeat(batch_size, 1, 1, 1)
         coords = coords.to(image.device)
-        image = torch.cat((coords, image), dim=1)
+        image = torch.cat((coords.float(), image), dim=1)
 
         return image
 
@@ -392,10 +392,10 @@ class Decoder(nn.Module):
         h = self.conv_layers(h)
 
         if self.dist == 'bernoulli':
-            x_mu = F.sigmoid(h)
+            x_mu = torch.sigmoid(h)
             return x_mu
         elif self.dist == 'gaussian':
-            x_mu = F.sigmoid(h[:, 0].unsqueeze(1))
+            x_mu = torch.sigmoid(h[:, 0].unsqueeze(1))
             x_logvar = F.hardtanh(h[:, 1].unsqueeze(1), min_val=-4.5,max_val=0.)
             return x_mu, x_logvar
 
@@ -502,7 +502,7 @@ class Classifier(nn.Module):
         output = self.classifier(h)
         
         if self.label_dist == 'bernoulli':
-            output = F.sigmoid(output)
+            output = torch.sigmoid(output)
         elif self.label_dist == 'categorical':
             output = F.log_softmax(output)
         else:

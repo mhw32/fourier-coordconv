@@ -14,7 +14,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from torchvision.datasets import MNIST
-from mime.experiments import DIST_OPTIONS
+from . import DIST_OPTIONS
 
 LOG2PI = float(np.log(2.0 * math.pi))
 

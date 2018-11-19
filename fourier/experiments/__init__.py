@@ -11,7 +11,7 @@ DATA_SHAPE = {
     'PerturbMNIST': (1, 32, 32),
     'FashionMNIST': (1, 28, 28),
     'Histopathology': (1, 28, 28),
-    'CelebA': (3, 64, 64),
+    'CelebA': (3, 32, 32),
     'SVHN': (3, 32, 32),
     'CIFAR10': (3, 32, 32),
 }

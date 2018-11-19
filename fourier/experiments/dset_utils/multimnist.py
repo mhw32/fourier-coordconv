@@ -22,7 +22,7 @@ from tqdm import tqdm
 import torch
 import torch.utils.data as data
 
-from mime.experiments import DATA_DIR
+from .. import DATA_DIR
 from torchvision.datasets import MNIST
 from torchvision import transforms
 

@@ -71,8 +71,8 @@ def build_dataset(name, data_dir, train=True):
         dataset = CelebA(
             os.path.join(data_dir, 'celeba'), 
             partition=split,
-            image_transform=transforms.Compose([transforms.Resize(64),
-                                                transforms.CenterCrop(64),
+            image_transform=transforms.Compose([transforms.Resize(32),
+                                                transforms.CenterCrop(32),
                                                 transforms.ToTensor()]),
             attr_transform=None,
         )
