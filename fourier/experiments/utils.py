@@ -250,3 +250,8 @@ def save_checkpoint(state, is_best, folder='./', filename='checkpoint.pth.tar'):
     if is_best:
         shutil.copyfile(os.path.join(folder, filename),
                         os.path.join(folder, 'model_best.pth.tar'))
+
+
+def merge_args_with_dict(args, dic):
+    for k, v in dic.iteritems():
+        setattr(args, k, v)

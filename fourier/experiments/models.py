@@ -75,10 +75,7 @@ class AddCoordinates(object):
             coords = torch.cat((coords, rs), dim=0)
 
         coords = torch.unsqueeze(coords, dim=0).repeat(batch_size, 1, 1, 1)
-        coords = Variable(coords, volatile=image.volatile)
-        if image.is_cuda:
-            coords = coords.cuda()
-
+        coords = coords.to(image.device)
         image = torch.cat((coords, image), dim=1)
 
         return image
@@ -306,11 +303,12 @@ class Encoder(nn.Module):
     @param n_filters: integer [default: 64]
                       number of filters (64 is a LOT)
                       each conv layer progressively blows this up more
+    @param conv: string [default: vanilla]
+                 vanilla|coord
     """
-    def __init__(self, n_channels, image_size, z_dim, n_filters=64,
-                 conv_func='vanilla'):
+    def __init__(self, n_channels, image_size, z_dim, n_filters=64, conv='vanilla'):
         super(Encoder, self).__init__()
-        assert conv_func in CONV_OPTIONS, "conv_func %s not supported." % conv_func
+        assert conv in CONV_OPTIONS, "conv %s not supported." % conv
         assert image_size in [28, 32], "reshape image to be either 28x28 or 32x32"
 
         self.z_dim = z_dim
@@ -319,12 +317,12 @@ class Encoder(nn.Module):
         self.n_filters = n_filters
         
         if self.image_size == 28:
-            self.conv_layers = gen_28_conv_layers(CONV_FUNCS[conv_func], 
-                                                    self.n_channels, self.n_filters)
+            self.conv_layers = gen_28_conv_layers(
+                CONV_FUNCS[conv], self.n_channels, self.n_filters)
             self.cout = gen_28_conv_output_dim(self.image_size)
         elif self.image_size == 32:
-            self.conv_layers = gen_32_conv_layers(CONV_FUNCS[conv_func],
-                                                    self.n_channels, self.n_filters)
+            self.conv_layers = gen_32_conv_layers(
+                CONV_FUNCS[conv], self.n_channels, self.n_filters)
             self.cout = gen_32_conv_output_dim(self.image_size)
         else:
             raise Exception('image_size %d not supported.' % self.image_size)
@@ -362,9 +360,9 @@ class Decoder(nn.Module):
                  bernoulli|gaussian
     """
     def __init__(self, n_channels, image_size, z_dim, n_filters=64,
-                 conv_func='vanilla', dist='bernoulli'):
+                 conv='vanilla', dist='bernoulli'):
         super(Decoder, self).__init__()
-        assert conv_func in CONV_OPTIONS, "conv_func %s not supported." % conv_func
+        assert conv in CONV_OPTIONS, "conv %s not supported." % conv
         assert image_size in [28, 32], "reshape image to be either 28x28 or 32x32"
         assert dist in DIST_OPTIONS, "dist %s not supported." % dist
 
@@ -375,11 +373,11 @@ class Decoder(nn.Module):
         self.n_filters = n_filters
 
         if self.image_size == 28:
-            self.conv_layers = gen_28_deconv_layers(CONV_FUNCS[conv_func], CONV_TRANS_FUNCS[conv_func], 
+            self.conv_layers = gen_28_deconv_layers(CONV_FUNCS[conv], CONV_TRANS_FUNCS[conv], 
                                                     self.n_channels, self.n_filters, dist=self.dist)
             self.cout = gen_28_conv_output_dim(self.image_size)
         elif self.image_size == 32:
-            self.conv_layers = gen_32_deconv_layers(CONV_FUNCS[conv_func], CONV_TRANS_FUNCS[conv_func], 
+            self.conv_layers = gen_32_deconv_layers(CONV_FUNCS[conv], CONV_TRANS_FUNCS[conv], 
                                                     self.n_channels, self.n_filters, dist=self.dist)
             self.cout = gen_32_conv_output_dim(self.image_size)
         else:
@@ -407,21 +405,21 @@ class Decoder(nn.Module):
 
 class VAE(nn.Module):
     def __init__(self, n_channels, image_size, z_dim, n_filters=64, 
-                    conv_func='vanilla', dist='bernoulli'):
+                    conv='vanilla', dist='bernoulli'):
         super(VAE, self).__init__()
-        assert conv_func in CONV_OPTIONS, "conv_func %s not supported." % conv_func
+        assert conv in CONV_OPTIONS, "conv %s not supported." % conv
         assert dist in DIST_OPTIONS, "dist %s not supported." % dist
         
         self.n_channels = n_channels
         self.image_size = image_size
         self.z_dim = z_dim
         self.dist = dist
-        self.conv_func = conv_func
+        self.conv = conv
         self.n_filters = n_filters
         self.encoder = Encoder(self.n_channels, self.image_size, self.z_dim,
-                                n_filters=self.n_filters, conv_func=self.conv_func)
+                                n_filters=self.n_filters, conv=self.conv)
         self.decoder = Decoder(self.n_channels, self.image_size, self.z_dim,
-                                n_filters=self.n_filters, conv_func=self.conv_func, 
+                                n_filters=self.n_filters, conv=self.conv, 
                                 dist=self.dist)
 
     def reparameterize(self, mu, logvar):
@@ -477,20 +475,20 @@ class VAE(nn.Module):
 
 class Classifier(nn.Module):
     def __init__(self, n_channels, image_size, n_class, hidden_dim=256, n_filters=64, 
-                    conv_func='vanilla', label_dist='bernoulli'):
-        super(VAE, self).__init__()
-        assert conv_func in CONV_OPTIONS, "conv_func %s not supported." % conv_func
+                    conv='vanilla', label_dist='bernoulli'):
+        super(Classifier, self).__init__()
+        assert conv in CONV_OPTIONS, "conv %s not supported." % conv
         assert label_dist in LABEL_OPTIONS, "label_dist %s not supported." % label_dist
 
         self.n_channels = n_channels
         self.image_size = image_size
         self.n_class = n_class
-        self.conv_func = conv_func
+        self.conv = conv
         self.n_filters = n_filters
         self.label_dist = label_dist
         self.hidden_dim = hidden_dim
         self.encoder = Encoder(self.n_channels, self.image_size, self.hidden_dim,
-                                n_filters=self.n_filters, conv_func=self.conv_func)
+                                n_filters=self.n_filters, conv=self.conv)
         self.classifier = nn.Linear(self.hidden_dim, n_class)
 
     def reparameterize(self, mu, logvar):
@@ -508,6 +506,6 @@ class Classifier(nn.Module):
         elif self.label_dist == 'categorical':
             output = F.log_softmax(output)
         else:
-            raise Exception('label_dist %s not supported.' % label_dist)
+            raise Exception('label_dist %s not supported.' % self.label_dist)
 
         return output

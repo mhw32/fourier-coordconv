@@ -13,3 +13,12 @@ DATA_SHAPE = {
     'SVHN': (3, 32, 32),
     'CIFAR10': (3, 32, 32),
 }
+DATA_DIST = {
+    'DynamicMNIST': 'bernoulli', 
+    'PerturbMNIST': 'bernoulli', 
+    'FashionMNIST': 'bernoulli',            
+    'Histopathology': 'bernoulli', 
+    'CelebA': 'bernoulli', 
+    'SVHN': 'bernoulli', 
+    'CIFAR10': 'bernoulli',
+}
