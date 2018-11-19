@@ -1,6 +1,8 @@
 DATA_DIR = '/mnt/fs5/wumike/datasets'
 DATA_OPTIONS = ['DynamicMNIST', 'PerturbMNIST', 'FashionMNIST',
                 'Histopathology', 'CelebA', 'SVHN', 'CIFAR10']
+SUP_DATA_OPTIONS = ['DynamicMNIST', 'PerturbMNIST', 'FashionMNIST',
+                    'CelebA', 'CIFAR10']
 CONV_OPTIONS = ['vanilla', 'coord']
 DIST_OPTIONS = ['bernoulli', 'gaussian']
 LABEL_OPTIONS = ['bernoulli', 'categorical']
@@ -21,4 +23,18 @@ DATA_DIST = {
     'CelebA': 'bernoulli', 
     'SVHN': 'bernoulli', 
     'CIFAR10': 'bernoulli',
+}
+DATA_LABEL_DIST = {
+    'DynamicMNIST': 'categorical', 
+    'PerturbMNIST': 'categorical', 
+    'FashionMNIST': 'categorical',            
+    'CelebA': 'bernoulli', 
+    'CIFAR10': 'categorical',
+}
+DATA_LABEL_NUM = {
+    'DynamicMNIST': 10, 
+    'PerturbMNIST': 10, 
+    'FashionMNIST': 10,            
+    'CelebA': 18, 
+    'CIFAR10': 10,
 }

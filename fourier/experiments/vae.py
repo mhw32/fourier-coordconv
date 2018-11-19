@@ -55,7 +55,7 @@ if __name__ == "__main__":
         test_dataset, batch_size=args.batch_size, shuffle=False)
 
     n_channels, image_size, image_size = DATA_SHAPE[args.dataset]
-    model = VAE(n_channels, image_size, args.z_dim, n_filters=32,
+    model = VAE(n_channels, image_size, args.z_dim, n_filters=args.n_filters,
                 conv=args.conv, dist=DATA_DIST[args.dataset])
     model = model.to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
@@ -72,7 +72,7 @@ if __name__ == "__main__":
 
             out = model(data)
             loss = elbo(*out, dist=DATA_DIST[args.dataset])
-            loss_meter.update(-elbo.item(), batch_size)
+            loss_meter.update(-loss.item(), batch_size)
 
             optimizer.zero_grad()
             loss.backward()
@@ -105,15 +105,12 @@ if __name__ == "__main__":
         return loss_meter.avg
 
 
-    best_loss = sys.maxint
     track_loss = np.zeros(args.epochs)
     
     for epoch in range(1, args.epochs + 1):
         train_loss = train(epoch)
+        scheduler.step()  # decrease learning rate
         test_loss = test(epoch)
 
-        is_best = test_loss < best_loss
-        best_loss = min(test_loss, best_loss)
         track_loss[epoch - 1] = test_loss
-
         np.save(os.path.join(args.out_dir, 'loss.npy'), track_loss)

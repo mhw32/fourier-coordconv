@@ -11,4 +11,5 @@ CONFIG = {
     'seed': 42,
     'lr': 0.0002,
     'lr_decay': 0.999995,
+    'hidden_dim': 256,
 }
