@@ -8,8 +8,15 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .utils import get_conv_output_dim
-from . import CONV_OPTIONS, DIST_OPTIONS
+from ..utils import (
+    get_conv_output_dim,
+    bernoulli_log_pdf,
+    logistic_256_log_pdf,
+    gaussian_log_pdf,
+    unit_gaussian_log_pdf,
+    log_mean_exp
+)
+from . import CONV_OPTIONS, DIST_OPTIONS, LABEL_OPTIONS
 
 
 # --- CoordConv implementation ---
@@ -393,3 +400,114 @@ class Decoder(nn.Module):
             x_mu = F.sigmoid(h[:, 0].unsqueeze(1))
             x_logvar = F.hardtanh(h[:, 1].unsqueeze(1), min_val=-4.5,max_val=0.)
             return x_mu, x_logvar
+
+
+# --- main model declarations ---
+
+
+class VAE(nn.Module):
+    def __init__(self, n_channels, image_size, z_dim, n_filters=64, 
+                    conv_func='vanilla', dist='bernoulli'):
+        super(VAE, self).__init__()
+        assert conv_func in CONV_OPTIONS, "conv_func %s not supported." % conv_func
+        assert dist in DIST_OPTIONS, "dist %s not supported." % dist
+        
+        self.n_channels = n_channels
+        self.image_size = image_size
+        self.z_dim = z_dim
+        self.dist = dist
+        self.conv_func = conv_func
+        self.n_filters = n_filters
+        self.encoder = Encoder(self.n_channels, self.image_size, self.z_dim,
+                                n_filters=self.n_filters, conv_func=self.conv_func)
+        self.decoder = Decoder(self.n_channels, self.image_size, self.z_dim,
+                                n_filters=self.n_filters, conv_func=self.conv_func, 
+                                dist=self.dist)
+
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5*logvar)
+        eps = torch.randn_like(mu)
+        return eps.mul(std).add_(mu)
+
+    def forward(self, data):
+        z_mu, z_logvar = self.encoder(data)
+        z = self.reparameterize(z_mu, z_logvar)
+
+        if self.dist == 'bernoulli':
+            recon_data_mu = self.decoder(z)
+            return data, recon_data_mu, z, z_mu, z_logvar
+        elif self.dist == 'gaussian':
+            recon_data_mu, recon_data_logvar = self.decoder(z)
+            return data, recon_data_mu, recon_data_logvar, z, z_mu, z_logvar
+        else:
+            raise Exception('dist %s not recognized.' % self.dist)
+
+    def get_marginal(self, data, n_samples=100):
+        batch_size =  data.size(0)
+        z_mu, z_logvar = self.encoder(data)
+        data_shape = (data.size(1), data.size(2), data.size(3))
+        data_2d = data.view(batch_size, np.prod(data_shape))
+
+        log_w = []
+        for i in xrange(n_samples):
+            z = self.reparameterize(z_mu, z_logvar)
+
+            if self.dist == 'bernoulli':
+                recon_x_mu = self.decoder(z)
+                recon_x_mu_2d = recon_x_mu.view(batch_size, np.prod(data_shape))
+                log_p_x_given_z = bernoulli_log_pdf(data_2d, recon_x_mu_2d)
+            elif self.dist == 'gaussian':
+                recon_x_mu, recon_x_logvar = self.decoder(z)
+                recon_x_mu_2d = recon_x_mu.view(batch_size, np.prod(data_shape))
+                recon_x_logvar_2d = recon_x_logvar.view(batch_size, np.prod(data_shape))
+                log_p_x_given_z = logistic_256_log_pdf(data_2d, recon_x_mu_2d, recon_x_logvar_2d)
+
+            log_q_z_given_x = gaussian_log_pdf(z, z_mu, z_logvar)
+            log_p_z = unit_gaussian_log_pdf(z)
+
+            log_w_i = log_p_x_given_z + log_p_z - log_q_z_given_x
+            log_w.append(log_w_i.unsqueeze(1))
+
+        log_w = torch.cat(log_w, dim=1)
+        log_p_x = log_mean_exp(log_w, dim=1)
+        log_p = -torch.mean(log_p_x)
+
+        return log_p
+
+
+class Classifier(nn.Module):
+    def __init__(self, n_channels, image_size, n_class, hidden_dim=256, n_filters=64, 
+                    conv_func='vanilla', label_dist='bernoulli'):
+        super(VAE, self).__init__()
+        assert conv_func in CONV_OPTIONS, "conv_func %s not supported." % conv_func
+        assert label_dist in LABEL_OPTIONS, "label_dist %s not supported." % label_dist
+
+        self.n_channels = n_channels
+        self.image_size = image_size
+        self.n_class = n_class
+        self.conv_func = conv_func
+        self.n_filters = n_filters
+        self.label_dist = label_dist
+        self.hidden_dim = hidden_dim
+        self.encoder = Encoder(self.n_channels, self.image_size, self.hidden_dim,
+                                n_filters=self.n_filters, conv_func=self.conv_func)
+        self.classifier = nn.Linear(self.hidden_dim, n_class)
+
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5*logvar)
+        eps = torch.randn_like(mu)
+        return eps.mul(std).add_(mu)
+
+    def forward(self, data):
+        h, _ = self.encoder(data)
+        h = F.relu(h)
+        output = self.classifier(h)
+        
+        if self.label_dist == 'bernoulli':
+            output = F.sigmoid(output)
+        elif self.label_dist == 'categorical':
+            output = F.log_softmax(output)
+        else:
+            raise Exception('label_dist %s not supported.' % label_dist)
+
+        return output
