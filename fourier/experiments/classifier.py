@@ -106,7 +106,7 @@ if __name__ == "__main__":
                 data = data.to(device)
                 label = label.to(device)
 
-                 out = model(data)
+                out = model(data)
                 if DATA_LABEL_DIST[args.dataset] == 'bernoulli':
                     loss = F.binary_cross_entropy(out, label)
                 elif DATA_LABEL_DIST[args.dataset] == 'categorical':
