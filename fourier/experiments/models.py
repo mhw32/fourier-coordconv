@@ -115,6 +115,7 @@ class AddFourierCoordConvTranspose2d(nn.Module):
 
         return x
 
+
 class ConcatFourierCoordinates(ApplyFourierCoordinates):
     def incorportate_fourier_coords(self, image, xx_channel, yy_channel):
         """ Concatenation """
@@ -173,11 +174,11 @@ def fourier_encoding(xx_positions, yy_positions):
     xx_positions_npy = xx_positions.numpy()
     yy_positions_npy = yy_positions.numpy()
 
-    def get_sinusoid_encoding_table(n_position, d_hid):
+    def get_sinusoid_encoding_table(n_position, d_hid, period=100):
 	''' Sinusoid position encoding table '''
 
         def cal_angle(position, hid_idx):
-            return position / np.power(10000, 2 * (hid_idx // 2) / d_hid)
+            return position / np.power(period, 2 * (hid_idx // 2) / d_hid)
 
         def get_posi_angle_vec(position):
             return [cal_angle(position, hid_j) for hid_j in range(d_hid)]
