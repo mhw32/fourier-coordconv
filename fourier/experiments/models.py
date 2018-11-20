@@ -55,9 +55,6 @@ class AddFourierCoordinates(object):
         xx_channel = xx_channel.repeat(batch_size, 1, 1, 1)
         yy_channel = yy_channel.repeat(batch_size, 1, 1, 1)
 
-        xx_channel = xx_channel.contiguous()
-        yy_channel = yy_channel.contiguous()
-        
         # add fourier transformation
         xx_channel, yy_channel = fourier_encoding(xx_channel, yy_channel)
 
