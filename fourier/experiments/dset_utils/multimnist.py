@@ -54,9 +54,10 @@ def load_dynamic_mnist_test_set(data_dir):
 
 def load_dynamic_multimnist_test_set(data_dir):
     # initial load we can take advantage of the dataloader
+    f = transforms.Compose([transforms.Resize(28),
+                            transforms.ToTensor()])
     test_loader = data.DataLoader(
-        MultiMNIST(data_dir, train=False,
-                   transform=transforms.ToTensor()),
+        MultiMNIST(data_dir, train=False, transform=f),
         batch_size=100, shuffle=True)
 
     # load it back into numpy tensors...
@@ -77,24 +78,18 @@ def load_dynamic_multimnist_test_set(data_dir):
 
 
 class MultiMNIST(data.Dataset):
-    r"""Images with 0 to N digits of (hopefully) non-overlapping MNIST numbers.
-
-    @param fix_digit_positions: boolean [default: False]
-                                use fixed location of images.
-    """
+    r"""Images with 0 to N digits of (hopefully) non-overlapping MNIST numbers."""
     processed_folder = 'permuted_multimnist'
     fixed_data_folder = 'multimnist_fixed'
     training_file = 'training.pt'
     test_file = 'test.pt'
 
-    def __init__(self, root, train=True, transform=None, target_transform=None,
-                 fix_digit_positions=False):
+    def __init__(self, root, train=True, transform=None, target_transform=None):
         self.root = os.path.expanduser(root)
         self.train = train  # training set or test set
         self.transform = transform
         self.target_transform = target_transform
-        self.data_folder = (self.fixed_data_folder if fix_digit_positions else
-                            self.processed_folder)
+        self.data_folder = self.processed_folder
 
         if self.train:
             self.train_data, self.train_labels = torch.load(
