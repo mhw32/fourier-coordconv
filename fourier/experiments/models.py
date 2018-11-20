@@ -55,12 +55,9 @@ class AddFourierCoordinates(object):
         xx_channel = xx_channel.float()
         yy_channel = yy_channel.float()
 
-        xx_channel = xx_channel.repeat(batch_size, 1, 1, 1).transpose(2, 3)
-        yy_channel = yy_channel.repeat(batch_size, 1, 1, 1).transpose(2, 3)
+        xx_channel = xx_channel.repeat(batch_size, 1, 1, 1)
+        yy_channel = yy_channel.repeat(batch_size, 1, 1, 1)
 
-        xx_channel = xx_channel.contiguous()
-        yy_channel = yy_channel.contiguous()
-        
         # add fourier transformation
         xx_channel, yy_channel = fourier_encoding(xx_channel, yy_channel)
 
@@ -159,6 +156,12 @@ def fourier_encoding(xx_positions, yy_positions):
     yy_evens = np.sin(yy_evens / np.power(10000., 2.*i_mask / d))
     yy_odds = np.cos(yy_odds / np.power(10000., 2.*i_mask / d))
 
+    # rebuild the structure
+    xx_positions_npy[:, :, ::2, :] = xx_evens
+    xx_positions_npy[:, :, 1::2, :] = xx_odds
+    yy_positions_npy[:, :, :, ::2] = yy_evens
+    yy_positions_npy[:, :, :, 1::2] = yy_odds
+
     xx_positions = torch.from_numpy(xx_positions_npy).float()
     yy_positions = torch.from_numpy(yy_positions_npy).float()
 
@@ -220,8 +223,8 @@ class AddCoordinates(object):
         xx_channel = xx_channel * 2 - 1
         yy_channel = yy_channel * 2 - 1
 
-        xx_channel = xx_channel.repeat(batch_size, 1, 1, 1).transpose(2, 3)
-        yy_channel = yy_channel.repeat(batch_size, 1, 1, 1).transpose(2, 3)
+        xx_channel = xx_channel.repeat(batch_size, 1, 1, 1)
+        yy_channel = yy_channel.repeat(batch_size, 1, 1, 1)
 
         ret = torch.cat([
             image,
@@ -659,7 +662,7 @@ class Classifier(nn.Module):
         if self.label_dist == 'bernoulli':
             output = torch.sigmoid(output)
         elif self.label_dist == 'categorical':
-            output = F.log_softmax(output)
+            output = F.log_softmax(output, dim=1)
         else:
             raise Exception('label_dist %s not supported.' % self.label_dist)
 
