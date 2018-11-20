@@ -3,7 +3,7 @@ DATA_OPTIONS = ['DynamicMNIST', 'PerturbMNIST', 'FashionMNIST',
                 'Histopathology', 'CelebA', 'SVHN', 'CIFAR10']
 SUP_DATA_OPTIONS = ['DynamicMNIST', 'PerturbMNIST', 'FashionMNIST',
                     'CelebA', 'CIFAR10']
-CONV_OPTIONS = ['vanilla', 'coord']
+CONV_OPTIONS = ['vanilla', 'coord', 'fourier']
 DIST_OPTIONS = ['bernoulli', 'gaussian']
 LABEL_OPTIONS = ['bernoulli', 'categorical']
 DATA_SHAPE = {

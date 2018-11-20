@@ -320,13 +320,13 @@ class CoordConvTranspose2d(nn.Module):
 CONV_FUNCS = {
     'vanilla': nn.Conv2d,
     'coord': CoordConv2d,
-    # add fourier version here
+    'fourier': FourierCoordConv2d,
 }
 
 CONV_TRANS_FUNCS = {
     'vanilla': nn.ConvTranspose2d,
     'coord': CoordConvTranspose2d,
-    # add fourier version here
+    'fourier': FourierCoordConvTranspose2d,
 }
 
 

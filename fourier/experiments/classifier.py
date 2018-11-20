@@ -29,7 +29,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset', type=str,
                         help='DynamicMNIST|PerturbMNIST|FashionMNIST|CelebA|CIFAR10')
-    parser.add_argument('conv', type=str, help='vanilla|coord')
+    parser.add_argument('conv', type=str, help='vanilla|coord|fourier')
     parser.add_argument('out_dir', type=str, help='where to save trained model')
     parser.add_argument('--cuda', action='store_true', default=False,
                         help='enables CUDA training')
