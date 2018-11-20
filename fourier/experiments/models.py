@@ -19,6 +19,127 @@ from .utils import (
 from . import CONV_OPTIONS, DIST_OPTIONS, LABEL_OPTIONS
 
 
+# --- FourierCoordConv implementation --- 
+
+
+class AddFourierCoordinates(object):
+    r"""Add Fourier encodings representing each position. Does
+    this have theoretical benefits over raw positional encodings?
+
+    Inspiration from AIAYN - https://arxiv.org/pdf/1706.03762
+
+    Args:
+        d (integer): Number of encoding dimensions. For example
+            this could be image height or width.
+    Shape:
+        - Input: `(N, C_{in}, H_{in}, W_{in})`
+        - Output: `(N, (C_{in} + 2), H_{in}, W_{in})`
+    """
+    def __call__(self, image):
+        """
+        Args:
+            image: shape(batch, channel, x_dim, y_dim)
+        """
+        batch_size, _, x_dim, y_dim = image.size()
+
+        xx_channel = torch.arange(x_dim).repeat(1, y_dim, 1)
+        yy_channel = torch.arange(y_dim).repeat(1, x_dim, 1).transpose(1, 2)
+
+        xx_channel = xx_channel.float()
+        yy_channel = yy_channel.float()
+
+        xx_channel = xx_channel.repeat(batch_size, 1, 1, 1).transpose(2, 3)
+        yy_channel = yy_channel.repeat(batch_size, 1, 1, 1).transpose(2, 3)
+
+        xx_channel = xx_channel.contiguous()
+        yy_channel = yy_channel.contiguous()
+        
+        # add fourier transformation
+        xx_channel, yy_channel = fourier_encoding(xx_channel, yy_channel)
+
+        # cast to CUDA
+        xx_channel = xx_channel.to(image.device)
+        yy_channel = yy_channel.to(image.device)
+
+        # add positional encodings to data
+        ret = image + xx_channel + yy_channel
+
+        return ret
+
+
+class FourierCoordConv2d(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size,
+                 stride=1, padding=0, dilation=1, groups=1, bias=True):
+        super(FourierCoordConv2d, self).__init__()
+
+        self.conv_layer = nn.Conv2d(in_channels, out_channels,
+                                    kernel_size, stride=stride,
+                                    padding=padding, dilation=dilation,
+                                    groups=groups, bias=bias)
+
+        self.coord_adder = AddFourierCoordinates()
+
+    def forward(self, x):
+        x = self.coord_adder(x)
+        x = self.conv_layer(x)
+
+        return x
+
+
+class FourierCoordConvTranspose2d(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size,
+                 stride=1, padding=0, output_padding=0, groups=1, bias=True,
+                 dilation=1):
+        super(CoordConvTranspose2d, self).__init__()
+
+        self.conv_tr_layer = nn.ConvTranspose2d(in_channels, out_channels,
+                                                kernel_size, stride=stride,
+                                                padding=padding,
+                                                output_padding=output_padding,
+                                                groups=groups, bias=bias,
+                                                dilation=dilation)
+
+        self.coord_adder = AddFourierCoordinates()
+
+    def forward(self, x):
+        x = self.coord_adder(x)
+        x = self.conv_tr_layer(x)
+
+        return x
+
+
+def fourier_encoding(xx_positions, yy_positions):
+    r"""Given a matrix of positions, convert to sine/cosine 
+    frequencies using odd/even positions.
+
+        PE(pos, 2i)   = sin(pos/10000^(2i/d))
+        PE(pos, 2i+1) = cos(pos/10000^(2i/d))
+    """
+    xx_positions_npy = xx_positions.numpy()
+    yy_positions_npy = yy_positions.numpy()
+
+    # let d be the number of channels
+    d = xx_positions.size(1)
+
+    xx_evens = xx_positions_npy[:, :, ::2, :]
+    xx_odds = xx_positions_npy[:, :, 1::2, :]
+    yy_evens = yy_positions_npy[:, :, :, ::2]
+    yy_odds = yy_positions_npy[:, :, :, 1::2]
+    
+
+    for i in xrange(d):
+        xx_positions_npy[:, i, ::2, :] = np.sin(xx_evens / np.power(10000., 2.*i / d))
+        xx_positions_npy[:, i, 1::2, :] = np.cos(xx_odds / np.power(10000., 2.*i / d))
+        
+        yy_positions_npy[:, i, :, ::2] = np.sin(yy_evens / np.power(10000., 2.*i / d))
+        yy_positions_npy[:, i, :, 1::2] = np.cos(yy_odds / np.power(10000., 2.*i / d))
+
+    xx_positions = torch.from_numpy(xx_positions_npy).float()
+    yy_positions = torch.from_numpy(yy_positions_npy).float()
+
+    return xx_positions, yy_positions
+
+
 # --- CoordConv implementation ---
 # https://github.com/Wizaron/coord-conv-pytorch
 
@@ -59,26 +180,35 @@ class AddCoordinates(object):
         self.with_r = with_r
 
     def __call__(self, image):
-        batch_size, _, image_height, image_width = image.size()
+        """
+        Args:
+            image: shape(batch, channel, x_dim, y_dim)
+        """
+        batch_size, _, x_dim, y_dim = image.size()
 
-        y_coords = 2.0 * torch.arange(image_height).unsqueeze(
-            1).expand(image_height, image_width) / (image_height - 1.0) - 1.0
-        x_coords = 2.0 * torch.arange(image_width).unsqueeze(
-            0).expand(image_height, image_width) / (image_width - 1.0) - 1.0
+        xx_channel = torch.arange(x_dim).repeat(1, y_dim, 1)
+        yy_channel = torch.arange(y_dim).repeat(1, x_dim, 1).transpose(1, 2)
 
-        coords = torch.stack((y_coords, x_coords), dim=0)
+        xx_channel = xx_channel.float() / (x_dim - 1)
+        yy_channel = yy_channel.float() / (y_dim - 1)
+
+        xx_channel = xx_channel * 2 - 1
+        yy_channel = yy_channel * 2 - 1
+
+        xx_channel = xx_channel.repeat(batch_size, 1, 1, 1).transpose(2, 3)
+        yy_channel = yy_channel.repeat(batch_size, 1, 1, 1).transpose(2, 3)
+
+        ret = torch.cat([
+            image,
+            xx_channel.type_as(image),
+            yy_channel.type_as(image)], dim=1)
 
         if self.with_r:
-            rs = ((y_coords ** 2) + (x_coords ** 2)) ** 0.5
-            rs = rs / torch.max(rs)
-            rs = torch.unsqueeze(rs, dim=0)
-            coords = torch.cat((coords, rs), dim=0)
+            rr = torch.sqrt(torch.pow(xx_channel.type_as(image) - 0.5, 2) + 
+                            torch.pow(yy_channel.type_as(image) - 0.5, 2))
+            ret = torch.cat([ret, rr], dim=1)
 
-        coords = torch.unsqueeze(coords, dim=0).repeat(batch_size, 1, 1, 1)
-        coords = coords.to(image.device)
-        image = torch.cat((coords.float(), image), dim=1)
-
-        return image
+        return ret
 
 
 class CoordConv2d(nn.Module):
