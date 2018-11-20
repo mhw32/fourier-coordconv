@@ -120,7 +120,7 @@ def fourier_encoding(xx_positions, yy_positions):
         PE(pos, 2i+1) = cos(pos/10000^(2i/d))
     """
     # let d be the number of channels
-    batch_size, d, _, _ = xx_positions.size()
+    d = xx_positions.size(1)
     
     xx_positions_npy = xx_positions.numpy()
     yy_positions_npy = yy_positions.numpy()
