@@ -91,7 +91,7 @@ if __name__ == "__main__":
                     epoch, batch_idx * batch_size, len(train_loader.dataset),
                     100. * batch_idx / len(train_loader), loss_meter.avg))
 
-        print('====> Train Epoch: {}\tLoss: {:.4f}'.format(epoch, loss_meter.avg))
+        print('====> Train Epoch: {}\tLoss: {:.4f}\tAccuracy: {:.4f}'.format(epoch, loss_meter.avg, accuracy_meter.avg))
         return loss_meter.avg, accuracy_meter.avg
 
 
@@ -117,7 +117,7 @@ if __name__ == "__main__":
                 pbar.update()
             pbar.close()
         
-        print('====> Test Epoch: {}\tLoss: {:.4f}'.format(epoch, loss_meter.avg))
+        print('====> Test Epoch: {}\tLoss: {:.4f}\tAccuracy: {:.4f}'.format(epoch, loss_meter.avg, accuracy_meter.avg))
         return loss_meter.avg, accuracy_meter.avg
 
 
