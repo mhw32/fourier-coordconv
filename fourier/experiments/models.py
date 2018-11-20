@@ -169,33 +169,32 @@ def fourier_encoding(xx_positions, yy_positions):
         PE(pos, 2i+1) = cos(pos/10000^(2i/d))
     """
     # let d be the number of channels
-    d = xx_positions.size(1)
-    
+    _, d_hid, image_size, _ = xx_positions.size()
     xx_positions_npy = xx_positions.numpy()
     yy_positions_npy = yy_positions.numpy()
 
-    xx_evens = xx_positions_npy[:, :, ::2, :]
-    xx_odds = xx_positions_npy[:, :, 1::2, :]
-    yy_evens = yy_positions_npy[:, :, :, ::2]
-    yy_odds = yy_positions_npy[:, :, :, 1::2]
+    def get_sinusoid_encoding_table(n_position, d_hid):
+	''' Sinusoid position encoding table '''
 
-    # https://github.com/jadore801120/attention-is-all-you-need-pytorch/blob/7e14834dd5e48bb1e6c74581c55684405e821298/transformer/Models.py#L18
-    i_mask = np.arange(d)[np.newaxis, :, np.newaxis, np.newaxis] // 2
+	def cal_angle(position, hid_idx):
+	    return position / np.power(10000, 2 * (hid_idx // 2) / d_hid)
 
-    xx_evens = np.sin(xx_evens / np.power(10000., 2.*i_mask / d))
-    xx_odds = np.cos(xx_odds / np.power(10000., 2.*i_mask / d))
-    
-    yy_evens = np.sin(yy_evens / np.power(10000., 2.*i_mask / d))
-    yy_odds = np.cos(yy_odds / np.power(10000., 2.*i_mask / d))
+	def get_posi_angle_vec(position):
+	    return [cal_angle(position, hid_j) for hid_j in range(d_hid)]
 
-    # rebuild the structure
-    xx_positions_npy[:, :, ::2, :] = xx_evens
-    xx_positions_npy[:, :, 1::2, :] = xx_odds
-    yy_positions_npy[:, :, :, ::2] = yy_evens
-    yy_positions_npy[:, :, :, 1::2] = yy_odds
+	sinusoid_table = np.array([get_posi_angle_vec(pos_i) for pos_i in range(n_position)])
+	sinusoid_table[:, 0::2] = np.sin(sinusoid_table[:, 0::2])  # dim 2i
+	sinusoid_table[:, 1::2] = np.cos(sinusoid_table[:, 1::2])  # dim 2i+1
 
-    xx_positions = torch.from_numpy(xx_positions_npy).float()
-    yy_positions = torch.from_numpy(yy_positions_npy).float()
+        return sinusoid_table
+
+    i_vec = get_sinusoid_encoding_table(image_size, d_hid)
+    i_mask = np.stack([i_vec for _ in xrange(image_size)])
+    i_mask = np.rollaxis(i_mask, 2)
+    j_mask = np.transpose(i_mask, (0, 2, 1))
+
+    xx_positions = torch.from_numpy(i_mask).float()
+    yy_positions = torch.from_numpy(j_mask).float()
 
     return xx_positions, yy_positions
 
