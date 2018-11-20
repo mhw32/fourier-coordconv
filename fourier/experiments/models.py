@@ -379,13 +379,15 @@ class CoordConvTranspose2d(nn.Module):
 CONV_FUNCS = {
     'vanilla': nn.Conv2d,
     'coord': CoordConv2d,
-    'fourier': FourierCoordConv2d,
+    'AddFourier': AddFourierCoordConv2d,
+    'ConcatFourier': ConcatFourierCoordConv2d,
 }
 
 CONV_TRANS_FUNCS = {
     'vanilla': nn.ConvTranspose2d,
     'coord': CoordConvTranspose2d,
-    'fourier': FourierCoordConvTranspose2d,
+    'AddFourier': AddFourierCoordConvTranspose2d,
+    'ConcatFourier': ConcatFourierCoordConvTranspose2d,
 }
 
 
