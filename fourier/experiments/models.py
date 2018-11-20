@@ -118,16 +118,14 @@ class AddFourierCoordConvTranspose2d(nn.Module):
 class ConcatFourierCoordinates(ApplyFourierCoordinates):
     def incorportate_fourier_coords(self, image, xx_channel, yy_channel):
         """ Concatenation """
-        return torch.concat([image, xx_channel, yy_channel], dim=1)
+        return torch.cat([image, xx_channel, yy_channel], dim=1)
 
 
 class ConcatFourierCoordConv2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size,
                  stride=1, padding=0, dilation=1, groups=1, bias=True):
         super(ConcatFourierCoordConv2d, self).__init__()
-
         in_channels *= 3
-
         self.conv_layer = nn.Conv2d(in_channels, out_channels,
                                     kernel_size, stride=stride,
                                     padding=padding, dilation=dilation,
@@ -147,9 +145,7 @@ class ConcatFourierCoordConvTranspose2d(nn.Module):
                  stride=1, padding=0, output_padding=0, groups=1, bias=True,
                  dilation=1):
         super(ConcatFourierCoordConvTranspose2d, self).__init__()
-
         in_channels *= 3
-
         self.conv_tr_layer = nn.ConvTranspose2d(in_channels, out_channels,
                                                 kernel_size, stride=stride,
                                                 padding=padding,

@@ -15,6 +15,7 @@ from torch import optim
 from torch.optim import lr_scheduler
 import torch.nn.functional as F
 from torchvision import transforms
+from torchvision.utils import save_image
 
 from .utils import elbo, AverageMeter, merge_args_with_dict
 from .datasets import build_dataset
@@ -28,7 +29,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset', type=str,
                         help='DynamicMNIST|PerturbMNIST|FashionMNIST|Histopathology|CelebA|SVHN|CIFAR10')
-    parser.add_argument('conv', type=str, help='vanilla|coord|fourier')
+    parser.add_argument('conv', type=str, help='vanilla|coord|AddFourier|ConcatFourier')
     parser.add_argument('out_dir', type=str, help='where to save trained model')
     parser.add_argument('--cuda', action='store_true', default=False,
                         help='enables CUDA training')
@@ -45,6 +46,11 @@ if __name__ == "__main__":
 
     if not os.path.exists(args.out_dir):
         os.makedirs(args.out_dir)
+
+    samples_dir = os.path.join(args.out_dir, 'samples')
+
+    if not os.path.exists(samples_dir):
+        os.makedirs(samples_dir)
 
     train_dataset = build_dataset(args.dataset, DATA_DIR, train=True)
     test_dataset = build_dataset(args.dataset, DATA_DIR, train=False)
@@ -105,12 +111,26 @@ if __name__ == "__main__":
         return loss_meter.avg
 
 
+    def sample(epoch):
+        z = torch.randn((64, args.z_dim))
+        z = z.to(device)
+        sample_mu = model.decoder(z)
+        n, c, h, w = sample_mu.size()
+        sample_mu = sample_mu.view(n * c * h * w)
+        sample = torch.bernoulli(sample_mu)
+        sample = sample.view(n, c, h, w)
+        
+        save_image(sample, os.path.join(samples_dir, 'sample%d.png' % epoch))
+        print('====> Saved sample')
+
+
     track_loss = np.zeros(args.epochs)
     
     for epoch in range(1, args.epochs + 1):
         train_loss = train(epoch)
         scheduler.step()  # decrease learning rate
         test_loss = test(epoch)
+        sample(epoch)
 
         track_loss[epoch - 1] = test_loss
         np.save(os.path.join(args.out_dir, 'loss.npy'), track_loss)

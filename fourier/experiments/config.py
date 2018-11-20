@@ -7,7 +7,7 @@ CONFIG = {
     'log_interval': 10,
     'batch_size': 100,
     'z_dim': 40,
-    'epochs': 500,
+    'epochs': 100,
     'seed': 42,
     'lr': 0.0002,
     'lr_decay': 0.999995,
