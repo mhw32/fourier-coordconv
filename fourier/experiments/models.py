@@ -35,6 +35,9 @@ class AddFourierCoordinates(object):
         - Input: `(N, C_{in}, H_{in}, W_{in})`
         - Output: `(N, (C_{in} + 2), H_{in}, W_{in})`
     """
+    def __init__(self, transform_type='addition'):
+        self.transform_type = 'addition'
+
     def __call__(self, image):
         """
         Args:
@@ -63,22 +66,33 @@ class AddFourierCoordinates(object):
         yy_channel = yy_channel.to(image.device)
 
         # add positional encodings to data
-        ret = image + xx_channel + yy_channel
-
+        if self.transform_type == 'addition':
+            ret = image + xx_channel + yy_channel
+        elif self.transform_type == 'concat':
+            ret = torch.concat([image, xx_channel, yy_channel], dim=1)
+        else:
+            raise Exception('Invalid Transformation Type for Incorporation of Fourier Coordinates')
         return ret
 
 
 class FourierCoordConv2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size,
-                 stride=1, padding=0, dilation=1, groups=1, bias=True):
+                 stride=1, padding=0, dilation=1, groups=1, bias=True, transform_type='addition'):
         super(FourierCoordConv2d, self).__init__()
+
+        if transform_type == 'addition':
+            in_channels = in_channels
+        elif transform_type == 'concat':
+            in_channels += 2
+        else:
+            raise Exception('Invalid Transformation Type for Incorporation of Fourier Coordinates')
 
         self.conv_layer = nn.Conv2d(in_channels, out_channels,
                                     kernel_size, stride=stride,
                                     padding=padding, dilation=dilation,
                                     groups=groups, bias=bias)
 
-        self.coord_adder = AddFourierCoordinates()
+        self.coord_adder = AddFourierCoordinates(transform_type)
 
     def forward(self, x):
         x = self.coord_adder(x)
@@ -90,8 +104,15 @@ class FourierCoordConv2d(nn.Module):
 class FourierCoordConvTranspose2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size,
                  stride=1, padding=0, output_padding=0, groups=1, bias=True,
-                 dilation=1):
+                 dilation=1, transform_type='addition'):
         super(FourierCoordConvTranspose2d, self).__init__()
+
+        if transform_type == 'addition':
+            in_channels = in_channels
+        elif transform_type == 'concat':
+            in_channels += 2
+        else:
+            raise Exception('Invalid Transformation Type for Incorporation of Fourier Coordinates')
 
         self.conv_tr_layer = nn.ConvTranspose2d(in_channels, out_channels,
                                                 kernel_size, stride=stride,
