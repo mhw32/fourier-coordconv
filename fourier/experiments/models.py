@@ -135,6 +135,12 @@ def fourier_encoding(xx_positions, yy_positions):
     yy_evens = np.sin(yy_evens / np.power(10000., 2.*i_mask / d))
     yy_odds = np.cos(yy_odds / np.power(10000., 2.*i_mask / d))
 
+    # rebuild the structure
+    xx_positions_npy[:, :, ::2, :] = xx_evens
+    xx_positions_npy[:, :, 1::2, :] = xx_odds
+    yy_positions_npy[:, :, :, ::2] = yy_evens
+    yy_positions_npy[:, :, :, 1::2] = yy_odds
+
     xx_positions = torch.from_numpy(xx_positions_npy).float()
     yy_positions = torch.from_numpy(yy_positions_npy).float()
 
@@ -635,7 +641,7 @@ class Classifier(nn.Module):
         if self.label_dist == 'bernoulli':
             output = torch.sigmoid(output)
         elif self.label_dist == 'categorical':
-            output = F.log_softmax(output)
+            output = F.log_softmax(output, dim=1)
         else:
             raise Exception('label_dist %s not supported.' % self.label_dist)
 
