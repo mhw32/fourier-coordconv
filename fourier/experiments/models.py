@@ -174,17 +174,17 @@ def fourier_encoding(xx_positions, yy_positions):
     yy_positions_npy = yy_positions.numpy()
 
     def get_sinusoid_encoding_table(n_position, d_hid):
-	''' Sinusoid position encoding table '''
+	    ''' Sinusoid position encoding table '''
 
-	def cal_angle(position, hid_idx):
-	    return position / np.power(10000, 2 * (hid_idx // 2) / d_hid)
+        def cal_angle(position, hid_idx):
+            return position / np.power(10000, 2 * (hid_idx // 2) / d_hid)
 
-	def get_posi_angle_vec(position):
-	    return [cal_angle(position, hid_j) for hid_j in range(d_hid)]
+        def get_posi_angle_vec(position):
+            return [cal_angle(position, hid_j) for hid_j in range(d_hid)]
 
-	sinusoid_table = np.array([get_posi_angle_vec(pos_i) for pos_i in range(n_position)])
-	sinusoid_table[:, 0::2] = np.sin(sinusoid_table[:, 0::2])  # dim 2i
-	sinusoid_table[:, 1::2] = np.cos(sinusoid_table[:, 1::2])  # dim 2i+1
+        sinusoid_table = np.array([get_posi_angle_vec(pos_i) for pos_i in range(n_position)])
+        sinusoid_table[:, 0::2] = np.sin(sinusoid_table[:, 0::2])  # dim 2i
+        sinusoid_table[:, 1::2] = np.cos(sinusoid_table[:, 1::2])  # dim 2i+1
 
         return sinusoid_table
 
