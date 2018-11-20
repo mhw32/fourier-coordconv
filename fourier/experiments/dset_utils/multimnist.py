@@ -24,7 +24,7 @@ import torch.utils.data as data
 
 from .. import DATA_DIR
 from torchvision.datasets import MNIST
-from torchvision import transforms
+from torchvision import transforms, datasets as dset
 
 sys.setrecursionlimit(100000)
 
@@ -52,10 +52,10 @@ def load_dynamic_mnist_test_set(data_dir):
     return test_dataset
 
 
-def load_dynamic_multimnist_test_set(data_dir, fix_digit_positions=False):
+def load_dynamic_multimnist_test_set(data_dir):
     # initial load we can take advantage of the dataloader
     test_loader = data.DataLoader(
-        MultiMNIST(data_dir, train=False, fix_digit_positions=fix_digit_positions,
+        MultiMNIST(data_dir, train=False,
                    transform=transforms.ToTensor()),
         batch_size=100, shuffle=True)
 
@@ -82,7 +82,7 @@ class MultiMNIST(data.Dataset):
     @param fix_digit_positions: boolean [default: False]
                                 use fixed location of images.
     """
-    processed_folder = 'multimnist'
+    processed_folder = 'permuted_multimnist'
     fixed_data_folder = 'multimnist_fixed'
     training_file = 'training.pt'
     test_file = 'test.pt'
@@ -160,7 +160,7 @@ def sample_multi(num_digits, canvas_size, mnist, resize=True, translate=True):
     labels = []
     for _ in range(num_digits):
         positioned_digit, label = sample_one(canvas_size, mnist, resize=resize,
-                                             translate=translate)
+                                             translate=translate )
         canvas += positioned_digit
         labels.append(label)
 
@@ -239,5 +239,5 @@ if __name__ == "__main__":
 
     # Generate the training set and dump it to disk. (Note, this will
     # always generate the same data, else error out.)
-    make_dataset(DATA_DIR, 'multimnist', 'training.pt', 'test.pt',
-                    min_digits=1, max_digits=1, resize=True, translate=True)
+    make_dataset(DATA_DIR, 'perturbed_multimnist', 'training.pt', 'test.pt',
+                    min_digits=1, max_digits=1, resize=False, translate=True)
