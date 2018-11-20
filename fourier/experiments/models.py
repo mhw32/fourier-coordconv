@@ -52,8 +52,8 @@ class AddFourierCoordinates(object):
         xx_channel = xx_channel.float()
         yy_channel = yy_channel.float()
 
-        xx_channel = xx_channel.repeat(batch_size, 1, 1, 1).transpose(2, 3)
-        yy_channel = yy_channel.repeat(batch_size, 1, 1, 1).transpose(2, 3)
+        xx_channel = xx_channel.repeat(batch_size, 1, 1, 1)
+        yy_channel = yy_channel.repeat(batch_size, 1, 1, 1)
 
         xx_channel = xx_channel.contiguous()
         yy_channel = yy_channel.contiguous()
@@ -199,8 +199,8 @@ class AddCoordinates(object):
         xx_channel = xx_channel * 2 - 1
         yy_channel = yy_channel * 2 - 1
 
-        xx_channel = xx_channel.repeat(batch_size, 1, 1, 1).transpose(2, 3)
-        yy_channel = yy_channel.repeat(batch_size, 1, 1, 1).transpose(2, 3)
+        xx_channel = xx_channel.repeat(batch_size, 1, 1, 1)
+        yy_channel = yy_channel.repeat(batch_size, 1, 1, 1)
 
         ret = torch.cat([
             image,
