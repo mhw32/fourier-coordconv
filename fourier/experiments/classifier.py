@@ -15,6 +15,7 @@ from torch import optim
 from torch.optim import lr_scheduler
 import torch.nn.functional as F
 from torchvision import transforms
+from sklearn.metrics import accuracy_score
 
 from .utils import AverageMeter, merge_args_with_dict
 from .datasets import build_dataset
@@ -79,19 +80,25 @@ if __name__ == "__main__":
                 loss = F.binary_cross_entropy(out, label)
             elif DATA_LABEL_DIST[args.dataset] == 'categorical':
                 loss = F.nll_loss(out, label)
-            
+
+            pred = torch.exp(out).max(1)[1]
+            accuracy = accuracy_score(label.cpu().numpy(), pred.cpu().numpy())    
+
             loss_meter.update(loss.item(), batch_size)
+            accuracy_meter.update(accuracy, batch_size)
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
             if batch_idx % args.log_interval == 0:
-                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\tAccuracy: {:.4f}'.format(
                     epoch, batch_idx * batch_size, len(train_loader.dataset),
-                    100. * batch_idx / len(train_loader), loss_meter.avg))
+                    100. * batch_idx / len(train_loader), loss_meter.avg, accuracy_meter.avg))
 
-        print('====> Train Epoch: {}\tLoss: {:.4f}'.format(epoch, loss_meter.avg))
+        print('====> Train Epoch: {}\tLoss: {:.4f}\tAccuracy: {:.4f}'.format(
+                epoch, loss_meter.avg, accuracy_meter.avg))
+
         return loss_meter.avg, accuracy_meter.avg
 
 
@@ -113,11 +120,17 @@ if __name__ == "__main__":
                 elif DATA_LABEL_DIST[args.dataset] == 'categorical':
                     loss = F.nll_loss(out, label)
 
+                pred = torch.exp(out).max(1)[1]
+                accuracy = accuracy_score(label.cpu().numpy(), pred.cpu().numpy())
+
                 loss_meter.update(loss.item(), batch_size)
+                accuracy_meter.update(accuracy, batch_size)
                 pbar.update()
             pbar.close()
         
-        print('====> Test Epoch: {}\tLoss: {:.4f}'.format(epoch, loss_meter.avg))
+        print('====> Test Epoch: {}\tLoss: {:.4f}\tAccuracy: {:.4f}'.format(
+                epoch, loss_meter.avg, accuracy_meter.avg))
+
         return loss_meter.avg, accuracy_meter.avg
 
 
