@@ -40,10 +40,14 @@ class AddFourierCoordinates(object):
         Args:
             image: shape(batch, channel, x_dim, y_dim)
         """
-        batch_size, _, x_dim, y_dim = image.size()
+        batch_size, c_dim, x_dim, y_dim = image.size()
 
         xx_channel = torch.arange(x_dim).repeat(1, y_dim, 1)
         yy_channel = torch.arange(y_dim).repeat(1, x_dim, 1).transpose(1, 2)
+
+        # need number of channels
+        xx_channel = xx_channel.repeat(c_dim, 1, 1)
+        yy_channel = yy_channel.repeat(c_dim, 1, 1)
 
         xx_channel = xx_channel.float()
         yy_channel = yy_channel.float()
@@ -115,24 +119,24 @@ def fourier_encoding(xx_positions, yy_positions):
         PE(pos, 2i)   = sin(pos/10000^(2i/d))
         PE(pos, 2i+1) = cos(pos/10000^(2i/d))
     """
+    # let d be the number of channels
+    batch_size, d, _, _ = xx_positions.size()
+    
     xx_positions_npy = xx_positions.numpy()
     yy_positions_npy = yy_positions.numpy()
-
-    # let d be the number of channels
-    d = xx_positions.size(1)
 
     xx_evens = xx_positions_npy[:, :, ::2, :]
     xx_odds = xx_positions_npy[:, :, 1::2, :]
     yy_evens = yy_positions_npy[:, :, :, ::2]
     yy_odds = yy_positions_npy[:, :, :, 1::2]
-    
 
-    for i in xrange(d):
-        xx_positions_npy[:, i, ::2, :] = np.sin(xx_evens / np.power(10000., 2.*i / d))
-        xx_positions_npy[:, i, 1::2, :] = np.cos(xx_odds / np.power(10000., 2.*i / d))
-        
-        yy_positions_npy[:, i, :, ::2] = np.sin(yy_evens / np.power(10000., 2.*i / d))
-        yy_positions_npy[:, i, :, 1::2] = np.cos(yy_odds / np.power(10000., 2.*i / d))
+    i_mask = np.arange(d)[np.newaxis, :, np.newaxis, np.newaxis]
+
+    xx_evens = np.sin(xx_evens / np.power(10000., 2.*i_mask / d))
+    xx_odds = np.cos(xx_odds / np.power(10000., 2.*i_mask / d))
+    
+    yy_evens = np.sin(yy_evens / np.power(10000., 2.*i_mask / d))
+    yy_odds = np.cos(yy_odds / np.power(10000., 2.*i_mask / d))
 
     xx_positions = torch.from_numpy(xx_positions_npy).float()
     yy_positions = torch.from_numpy(yy_positions_npy).float()
