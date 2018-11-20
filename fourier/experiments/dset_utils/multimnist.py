@@ -212,9 +212,9 @@ def make_dataset(root, folder, training_file, test_file, min_digits=0, max_digit
 
     np.random.seed(681307)
     train_mnist, test_mnist = load_mnist()
-    train_x, train_y = mk_dataset(60000, train_mnist, min_digits, max_digits, 32,
+    train_x, train_y = mk_dataset(60000, train_mnist, min_digits, max_digits, 64,
                                   resize=resize, translate=translate)
-    test_x, test_y = mk_dataset(10000, test_mnist, min_digits, max_digits, 32,
+    test_x, test_y = mk_dataset(10000, test_mnist, min_digits, max_digits, 64,
                                 resize=resize, translate=translate)
 
     train_x = torch.from_numpy(train_x).byte().unsqueeze(1)

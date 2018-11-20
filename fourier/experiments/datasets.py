@@ -47,7 +47,6 @@ def build_dataset(name, data_dir, train=True):
             # but dont just take the rounded version (call bernoullli once)
             return load_dynamic_mnist_test_set(data_dir)
     elif name == 'PerturbMNIST':
-        data_dir = os.path.join(data_dir, 'perturbed_multimnist')
         if train:
             return MultiMNIST(data_dir, train=train,
                               transform=torch.bernoulli)
