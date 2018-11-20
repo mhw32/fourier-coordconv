@@ -179,7 +179,8 @@ def fourier_encoding(xx_positions, yy_positions):
     yy_evens = yy_positions_npy[:, :, :, ::2]
     yy_odds = yy_positions_npy[:, :, :, 1::2]
 
-    i_mask = np.arange(d)[np.newaxis, :, np.newaxis, np.newaxis]
+    # https://github.com/jadore801120/attention-is-all-you-need-pytorch/blob/7e14834dd5e48bb1e6c74581c55684405e821298/transformer/Models.py#L18
+    i_mask = np.arange(d)[np.newaxis, :, np.newaxis, np.newaxis] // 2
 
     xx_evens = np.sin(xx_evens / np.power(10000., 2.*i_mask / d))
     xx_odds = np.cos(xx_odds / np.power(10000., 2.*i_mask / d))
