@@ -90,7 +90,7 @@ class FourierCoordConvTranspose2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size,
                  stride=1, padding=0, output_padding=0, groups=1, bias=True,
                  dilation=1):
-        super(CoordConvTranspose2d, self).__init__()
+        super(FourierCoordConvTranspose2d, self).__init__()
 
         self.conv_tr_layer = nn.ConvTranspose2d(in_channels, out_channels,
                                                 kernel_size, stride=stride,
