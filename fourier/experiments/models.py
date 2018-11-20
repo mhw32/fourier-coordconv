@@ -22,8 +22,8 @@ from . import CONV_OPTIONS, DIST_OPTIONS, LABEL_OPTIONS
 # --- FourierCoordConv implementation --- 
 
 
-class AddFourierCoordinates(object):
-    r"""Add Fourier encodings representing each position. Does
+class ApplyFourierCoordinates(object):
+    r"""Appply Fourier encodings representing each position. Does
     this have theoretical benefits over raw positional encodings?
 
     Inspiration from AIAYN - https://arxiv.org/pdf/1706.03762
@@ -35,8 +35,8 @@ class AddFourierCoordinates(object):
         - Input: `(N, C_{in}, H_{in}, W_{in})`
         - Output: `(N, (C_{in} + 2), H_{in}, W_{in})`
     """
-    def __init__(self, transform_type='addition'):
-        self.transform_type = 'addition'
+    def incorportate_fourier_coords(self, image, xx_channel, yy_channel):
+        raise Exception('Must be implemented in subclass')
 
     def __call__(self, image):
         """
@@ -66,53 +66,39 @@ class AddFourierCoordinates(object):
         yy_channel = yy_channel.to(image.device)
 
         # add positional encodings to data
-        if self.transform_type == 'addition':
-            ret = image + xx_channel + yy_channel
-        elif self.transform_type == 'concat':
-            ret = torch.concat([image, xx_channel, yy_channel], dim=1)
-        else:
-            raise Exception('Invalid Transformation Type for Incorporation of Fourier Coordinates')
-        return ret
+        return self.incorportate_fourier_coords(image, xx_channel, yy_channel)
 
 
-class FourierCoordConv2d(nn.Module):
+class AddFourierCoordinates(ApplyFourierCoordinates):
+    def incorportate_fourier_coords(self, image, xx_channel, yy_channel):
+        """ Addition """
+        return image + xx_channel + yy_channel
+
+
+class AddFourierCoordConv2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size,
-                 stride=1, padding=0, dilation=1, groups=1, bias=True, transform_type='addition'):
-        super(FourierCoordConv2d, self).__init__()
-
-        if transform_type == 'addition':
-            in_channels = in_channels
-        elif transform_type == 'concat':
-            in_channels *= 3
-        else:
-            raise Exception('Invalid Transformation Type for Incorporation of Fourier Coordinates')
+                 stride=1, padding=0, dilation=1, groups=1, bias=True):
+        super(AddFourierCoordConv2d, self).__init__()
 
         self.conv_layer = nn.Conv2d(in_channels, out_channels,
                                     kernel_size, stride=stride,
                                     padding=padding, dilation=dilation,
                                     groups=groups, bias=bias)
 
-        self.coord_adder = AddFourierCoordinates(transform_type)
+        self.coord_applier = AddFourierCoordinates()
 
     def forward(self, x):
-        x = self.coord_adder(x)
+        x = self.coord_applier(x)
         x = self.conv_layer(x)
 
         return x
 
 
-class FourierCoordConvTranspose2d(nn.Module):
+class AddFourierCoordConvTranspose2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size,
                  stride=1, padding=0, output_padding=0, groups=1, bias=True,
-                 dilation=1, transform_type='addition'):
-        super(FourierCoordConvTranspose2d, self).__init__()
-
-        if transform_type == 'addition':
-            in_channels = in_channels
-        elif transform_type == 'concat':
-            in_channels *= 3
-        else:
-            raise Exception('Invalid Transformation Type for Incorporation of Fourier Coordinates')
+                 dilation=1):
+        super(AddFourierCoordConvTranspose2d, self).__init__()
 
         self.conv_tr_layer = nn.ConvTranspose2d(in_channels, out_channels,
                                                 kernel_size, stride=stride,
@@ -121,14 +107,63 @@ class FourierCoordConvTranspose2d(nn.Module):
                                                 groups=groups, bias=bias,
                                                 dilation=dilation)
 
-        self.coord_adder = AddFourierCoordinates()
+        self.coord_applier = AddFourierCoordinates()
 
     def forward(self, x):
-        x = self.coord_adder(x)
+        x = self.coord_applier(x)
         x = self.conv_tr_layer(x)
 
         return x
 
+class ConcatFourierCoordinates(ApplyFourierCoordinates):
+    def incorportate_fourier_coords(self, image, xx_channel, yy_channel):
+        """ Concatenation """
+        return torch.concat([image, xx_channel, yy_channel], dim=1)
+
+
+class ConcatFourierCoordConv2d(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size,
+                 stride=1, padding=0, dilation=1, groups=1, bias=True):
+        super(ConcatFourierCoordConv2d, self).__init__()
+
+        in_channels *= 3
+
+        self.conv_layer = nn.Conv2d(in_channels, out_channels,
+                                    kernel_size, stride=stride,
+                                    padding=padding, dilation=dilation,
+                                    groups=groups, bias=bias)
+
+        self.coord_applier = ConcatFourierCoordinates()
+
+    def forward(self, x):
+        x = self.coord_applier(x)
+        x = self.conv_layer(x)
+
+        return x
+
+
+class ConcatFourierCoordConvTranspose2d(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size,
+                 stride=1, padding=0, output_padding=0, groups=1, bias=True,
+                 dilation=1):
+        super(ConcatFourierCoordConvTranspose2d, self).__init__()
+
+        in_channels *= 3
+
+        self.conv_tr_layer = nn.ConvTranspose2d(in_channels, out_channels,
+                                                kernel_size, stride=stride,
+                                                padding=padding,
+                                                output_padding=output_padding,
+                                                groups=groups, bias=bias,
+                                                dilation=dilation)
+
+        self.coord_applier = ConcatFourierCoordinates()
+
+    def forward(self, x):
+        x = self.coord_applier(x)
+        x = self.conv_tr_layer(x)
+
+        return x
 
 def fourier_encoding(xx_positions, yy_positions):
     r"""Given a matrix of positions, convert to sine/cosine 
