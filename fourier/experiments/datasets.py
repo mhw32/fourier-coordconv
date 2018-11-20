@@ -86,7 +86,7 @@ def dynamic_binarize(x):
 
 
 def reshape_and_binarize(x):
-    f = transforms.Compose([transforms.Resize(28),
+    f = transforms.Compose([transforms.Resize(32),
                             transforms.ToTensor()])
     x = f(x)
     x = torch.bernoulli(x)

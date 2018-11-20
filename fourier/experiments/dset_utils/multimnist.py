@@ -54,15 +54,20 @@ def load_dynamic_mnist_test_set(data_dir):
 
 def load_dynamic_multimnist_test_set(data_dir):
     # initial load we can take advantage of the dataloader
-    f = transforms.Compose([transforms.Resize(28),
+    f = transforms.Compose([transforms.Resize(32),
                             transforms.ToTensor()])
     test_loader = data.DataLoader(
         MultiMNIST(data_dir, train=False, transform=f),
         batch_size=100, shuffle=True)
 
     # load it back into numpy tensors...
-    x_test = test_loader.dataset.test_data.float().numpy() / 255.
-    y_test = np.array(test_loader.dataset.test_labels, dtype=int)
+    x_test, y_test = [], []
+    for image, label in test_loader:
+        x_test.append(image)
+        y_test.append(label)
+
+    x_test = torch.cat(x_test, dim=0).numpy()
+    y_test = torch.cat(y_test, dim=0).numpy()
 
     # binarize once!!! (we don't dynamically binarize this)
     np.random.seed(777)
@@ -79,8 +84,7 @@ def load_dynamic_multimnist_test_set(data_dir):
 
 class MultiMNIST(data.Dataset):
     r"""Images with 0 to N digits of (hopefully) non-overlapping MNIST numbers."""
-    processed_folder = 'permuted_multimnist'
-    fixed_data_folder = 'multimnist_fixed'
+    processed_folder = 'perturbed_multimnist'
     training_file = 'training.pt'
     test_file = 'test.pt'
 
@@ -106,7 +110,12 @@ class MultiMNIST(data.Dataset):
         else:
             img, target = self.test_data[index], self.test_labels[index]
 
+        target = target[0]
+
         if self.transform is not None:
+            img = img.numpy()[0] * 255
+            img = img.astype(np.uint8)
+            img = Image.fromarray(img)
             img = self.transform(img)
 
         if self.target_transform is not None:
