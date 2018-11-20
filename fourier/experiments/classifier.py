@@ -103,6 +103,7 @@ if __name__ == "__main__":
         with torch.no_grad():
             pbar = tqdm(total=len(test_loader))
             for data, label in test_loader:
+                batch_size = len(data)
                 data = data.to(device)
                 label = label.to(device)
 
