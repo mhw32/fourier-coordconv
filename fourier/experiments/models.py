@@ -83,7 +83,7 @@ class FourierCoordConv2d(nn.Module):
         if transform_type == 'addition':
             in_channels = in_channels
         elif transform_type == 'concat':
-            in_channels += 2
+            in_channels *= 3
         else:
             raise Exception('Invalid Transformation Type for Incorporation of Fourier Coordinates')
 
@@ -110,7 +110,7 @@ class FourierCoordConvTranspose2d(nn.Module):
         if transform_type == 'addition':
             in_channels = in_channels
         elif transform_type == 'concat':
-            in_channels += 2
+            in_channels *= 3
         else:
             raise Exception('Invalid Transformation Type for Incorporation of Fourier Coordinates')
 
