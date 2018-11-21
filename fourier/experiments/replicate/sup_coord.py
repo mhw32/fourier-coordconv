@@ -36,7 +36,7 @@ class Net(nn.Module):
             self.deconv5 = nn.ConvTranspose2d(64, 64, 2, stride=2)
             self.deconv6 = nn.ConvTranspose2d(64, 1, 2, stride=2)
         elif self.type == 'gen-coord':
-
+            pass
         else:
             raise Exception('Invalid Conv Type')
 
