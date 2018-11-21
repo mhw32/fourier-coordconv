@@ -162,8 +162,8 @@ class CoordConv2d(conv.Conv2d):
 def load_dataset(datatype):
     if datatype == 'uniform':
         # Load the one hot datasets
-        train_onehot = np.load(os.path.join(os.path.realpath(__file__), 'data-uniform/train_onehot.npy')).astype('float32')
-        test_onehot = np.load(os.path.join(os.path.realpath(__file__), 'data-uniform/test_onehot.npy')).astype('float32')
+        train_onehot = np.load(os.path.join(os.path.dirname(__file__), 'data-uniform/train_onehot.npy')).astype('float32')
+        test_onehot = np.load(os.path.join(os.path.dirname(__file__), 'data-uniform/test_onehot.npy')).astype('float32')
 
         # make the train and test datasets
         # train
@@ -196,11 +196,11 @@ def load_dataset(datatype):
         return train_set, test_set, train_onehot, test_onehot
     else:
         # Load the one hot datasets and the train / test set
-        train_set = np.load(os.path.join(os.path.realpath(__file__), 'data-quadrant/train_set.npy')).astype('float32')
-        test_set = np.load(os.path.join(os.path.realpath(__file__), 'data-quadrant/test_set.npy')).astype('float32')
+        train_set = np.load(os.path.join(os.path.dir_name(__file__), 'data-quadrant/train_set.npy')).astype('float32')
+        test_set = np.load(os.path.join(os.path.dir_name(__file__), 'data-quadrant/test_set.npy')).astype('float32')
 
-        train_onehot = np.load(os.path.join(os.path.realpath(__file__), 'data-quadrant/train_onehot.npy')).astype('float32')
-        test_onehot = np.load(os.path.join(os.path.realpath(__file__), 'data-quadrant/test_onehot.npy')).astype('float32')
+        train_onehot = np.load(os.path.join(os.path.dir_name(__file__), 'data-quadrant/train_onehot.npy')).astype('float32')
+        test_onehot = np.load(os.path.join(os.path.dir_name(__file__), 'data-quadrant/test_onehot.npy')).astype('float32')
 
         train_set = np.tile(train_set, [1, 1, 64, 64])
         test_set = np.tile(test_set, [1, 1, 64, 64])
@@ -236,7 +236,6 @@ def test(net, test_loader, optimizer, criterion, device):
     test_loss = 0
     correct = 0
     pred_logits = torch.tensor([])
-    import pdb; pdb.set_trace()
     for data, target in test_loader:
         with torch.no_grad():
             data, target = data.to(device), target.to(device)
