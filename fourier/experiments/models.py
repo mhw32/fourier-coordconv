@@ -160,14 +160,13 @@ class ConcatFourierCoordConvTranspose2d(nn.Module):
                                                 groups=groups, bias=bias,
                                                 dilation=dilation)
 
-        self.coord_applier = ConcatFourierCoordinates(scramble=scramble)
+        self.coord_applier = ConcatFourierCoordinates()
 
     def forward(self, x):
         x = self.coord_applier(x)
         x = self.conv_tr_layer(x)
 
         return x
-
 
 def fourier_encoding(image_size, d_hid):
     r"""Given a matrix of positions, convert to sine/cosine 
@@ -404,13 +403,10 @@ CONV_TRANS_FUNCS = {
 def gen_32_conv_layers(conv2d_func, n_channels, n_filters):
     conv_layers = nn.Sequential(
         conv2d_func(n_channels, n_filters, 2, 2, padding=0),
-        nn.BatchNorm2d(n_filters),
         nn.ReLU(),
-        conv2d_func(n_filters, n_filters * 2, 2, 2, padding=0),
-        nn.BatchNorm2d(n_filters * 2),
+        nn.Conv2d(n_filters, n_filters * 2, 2, 2, padding=0),
         nn.ReLU(),
-        conv2d_func(n_filters * 2, n_filters * 4, 2, 2, padding=0),
-        nn.BatchNorm2d(n_filters * 4),
+        nn.Conv2d(n_filters * 2, n_filters * 4, 2, 2, padding=0),
         nn.ReLU(),
     )
     return conv_layers
@@ -426,13 +422,10 @@ def gen_32_deconv_layers(conv2d_func, conv_trans2d_func, n_channel, n_filters, d
 
     conv_layers = nn.Sequential(
         conv_trans2d_func(n_filters * 4, n_filters * 4, 2, 2, padding=0),
-        nn.BatchNorm2d(n_filters * 4),
         nn.ReLU(),
         conv_trans2d_func(n_filters * 4, n_filters * 2, 2, 2, padding=0),
-        nn.BatchNorm2d(n_filters * 2),
         nn.ReLU(),
         conv_trans2d_func(n_filters * 2, n_filters, 2, 2, padding=0),
-        nn.BatchNorm2d(n_filters),
         nn.ReLU(),
         conv2d_func(n_filters, out_channel, 1, 1, padding=0),
     )
@@ -449,13 +442,10 @@ def gen_32_conv_output_dim(s):
 def gen_28_conv_layers(conv2d_func, n_channel, n_filters):
     conv_layers = nn.Sequential(
         conv2d_func(n_channel, n_filters, 2, 2, padding=0),
-        nn.BatchNorm2d(n_filters),
         nn.ReLU(),
-        conv2d_func(n_filters, n_filters * 2, 2, 2, padding=1),
-        nn.BatchNorm2d(n_filters * 2),
+        nn.Conv2d(n_filters, n_filters * 2, 2, 2, padding=1),
         nn.ReLU(),
-        conv2d_func(n_filters * 2, n_filters * 4, 2, 2, padding=0),
-        nn.BatchNorm2d(n_filters * 4),
+        nn.Conv2d(n_filters * 2, n_filters * 4, 2, 2, padding=0),
         nn.ReLU(),
     )
     return conv_layers
@@ -471,13 +461,10 @@ def gen_28_deconv_layers(conv2d_func, conv_trans2d_func, n_channel, n_filters, d
 
     conv_layers = nn.Sequential(
         conv_trans2d_func(n_filters * 4, n_filters * 4, 2, 2, padding=0),
-        nn.BatchNorm2d(n_filters * 4),
         nn.ReLU(),
         conv_trans2d_func(n_filters * 4, n_filters * 2, 2, 2, padding=1),
-        nn.BatchNorm2d(n_filters * 2),
         nn.ReLU(),
         conv_trans2d_func(n_filters * 2, n_filters, 2, 2, padding=0),
-        nn.BatchNorm2d(n_filters),
         nn.ReLU(),
         conv2d_func(n_filters, out_channel, 1, 1, padding=0),
     )
@@ -526,6 +513,9 @@ class Encoder(nn.Module):
             self.conv_layers = gen_32_conv_layers(
                 CONV_FUNCS[conv], self.n_channels, self.n_filters)
             self.cout = gen_32_conv_output_dim(self.image_size)
+        elif self.image_size == 64:
+            self.conv_layers = gen_64_conv_layers(
+                CONV_FUNCS[conv], self.n_channels, self.n_filters)
         else:
             raise Exception('image_size %d not supported.' % self.image_size)
         
