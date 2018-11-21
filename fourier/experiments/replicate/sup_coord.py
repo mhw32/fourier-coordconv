@@ -73,6 +73,7 @@ class Net(nn.Module):
             x = F.relu(self.conv2(x))
             x = F.relu(self.conv3(x))
             x = self.conv4(x)
+            x = x.view(-1, 64*64)
             x = F.relu(self.conv5(x))
             x = F.relu(self.conv6(x))
             x = F.relu(self.conv7(x))
