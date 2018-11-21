@@ -162,8 +162,8 @@ class CoordConv2d(conv.Conv2d):
 def load_dataset(datatype):
     if datatype == 'uniform':
         # Load the one hot datasets
-        train_onehot = np.load('./data-uniform/train_onehot.npy').astype('float32')
-        test_onehot = np.load('./data-uniform/test_onehot.npy').astype('float32')
+        train_onehot = np.load(os.path.join(__file__, 'data-uniform/train_onehot.npy')).astype('float32')
+        test_onehot = np.load(os.path.join(__file__, 'data-uniform/test_onehot.npy')).astype('float32')
 
         # make the train and test datasets
         # train
@@ -196,11 +196,11 @@ def load_dataset(datatype):
         return train_set, test_set, train_onehot, test_onehot
     else:
         # Load the one hot datasets and the train / test set
-        train_set = np.load('./data-quadrant/train_set.npy').astype('float32')
-        test_set = np.load('./data-quadrant/test_set.npy').astype('float32')
+        train_set = np.load(os.path.join(__file__, 'data-quadrant/train_set.npy')).astype('float32')
+        test_set = np.load(os.path.join(__file__, 'data-quadrant/test_set.npy')).astype('float32')
 
-        train_onehot = np.load('./data-quadrant/train_onehot.npy').astype('float32')
-        test_onehot = np.load('./data-quadrant/test_onehot.npy').astype('float32')
+        train_onehot = np.load(os.path.join(__file__, 'data-quadrant/train_onehot.npy')).astype('float32')
+        test_onehot = np.load(os.path.join(__file__, 'data-quadrant/test_onehot.npy')).astype('float32')
 
         train_set = np.tile(train_set, [1, 1, 64, 64])
         test_set = np.tile(test_set, [1, 1, 64, 64])
