@@ -35,6 +35,8 @@ class Net(nn.Module):
             self.deconv4 = nn.ConvTranspose2d(128, 64, 2, stride=2)
             self.deconv5 = nn.ConvTranspose2d(64, 64, 2, stride=2)
             self.deconv6 = nn.ConvTranspose2d(64, 1, 2, stride=2)
+        elif self.type == 'gen-coord':
+
         else:
             raise Exception('Invalid Conv Type')
 
@@ -48,13 +50,15 @@ class Net(nn.Module):
             x = x.view(-1, 64*64)
             return x
         elif self.type == 'deconv':
-            x = self.deconv1(x)
-            x = self.deconv2(x)
-            x = self.deconv3(x)
-            x = self.deconv4(x)
-            x = self.deconv5(x)
+            x = F.relu(self.deconv1(x))
+            x = F.relu(self.deconv2(x))
+            x = F.relu(self.deconv3(x))
+            x = F.relu(self.deconv4(x))
+            x = F.relu(self.deconv5(x))
             x = self.deconv6(x)
             x = x.view(-1, 64*64)
+            return x
+        elif self.type == 'gen-coord':
             return x
         else:
             raise Exception('Invalid Conv Type')
@@ -295,7 +299,7 @@ if __name__ == '__main__':
     parser.add_argument('dataset', type=str,
                         help='uniform|quadrant')
     parser.add_argument('conv', type=str,
-                        help='deconv|coord')
+                        help='deconv|coord|gen')
     parser.add_argument('epochs', type=int,
                         help='num training epochs')
     parser.add_argument('--cuda', action='store_true', default=False,
@@ -304,7 +308,7 @@ if __name__ == '__main__':
     args.cuda = args.cuda and torch.cuda.is_available()
 
     assert args.dataset in ['uniform', 'quadrant']
-    assert args.conv in ['deconv', 'coord']
+    assert args.conv in ['deconv', 'coord', 'gen-coor']
 
     train_set, test_set, train_onehot, test_onehot, train_orig, test_orig = load_dataset(args.dataset)
 
@@ -339,7 +343,19 @@ if __name__ == '__main__':
         test_tensor_x = torch.stack([torch.Tensor(i) for i in test_orig])
         test_tensor_y = torch.stack([torch.LongTensor(i) for i in test_onehot])
         test_dataset = utils.TensorDataset(test_tensor_x,test_tensor_y)
-        test_dataloader = utils.DataLoader(test_dataset, batch_size=32, shuffle=False)       
+        test_dataloader = utils.DataLoader(test_dataset, batch_size=32, shuffle=False)
+    elif args.conv == 'gen-coord':
+        # train data
+        train_tensor_x = torch.stack([torch.Tensor(i) for i in train_set])
+        train_tensor_y = torch.stack([torch.LongTensor(i) for i in train_onehot])
+        train_dataset = utils.TensorDataset(train_tensor_x,train_tensor_y)
+        train_dataloader = utils.DataLoader(train_dataset, batch_size=32, shuffle=False)
+
+        # test data 
+        test_tensor_x = torch.stack([torch.Tensor(i) for i in test_set])
+        test_tensor_y = torch.stack([torch.LongTensor(i) for i in test_onehot])
+        test_dataset = utils.TensorDataset(test_tensor_x,test_tensor_y)
+        test_dataloader = utils.DataLoader(test_dataset, batch_size=32, shuffle=False)           
     else:
         raise Exception('Invalid Conv Type')
 
