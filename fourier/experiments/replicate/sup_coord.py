@@ -45,7 +45,7 @@ class Net(nn.Module):
             self.conv6 = nn.Conv2d(16, 16, 2)
             self.conv6 = nn.Conv2d(16, 32, 2)
             self.conv7 = nn.Conv2d(32, 32, 2)
-            self.conv8 = nn.Conv2d(1, 1, 1)
+            self.conv8 = nn.Conv2d(32, 1, 1)
         else:
             raise Exception('Invalid Conv Type')
 
@@ -332,7 +332,7 @@ if __name__ == '__main__':
     args.cuda = args.cuda and torch.cuda.is_available()
 
     assert args.dataset in ['uniform', 'quadrant']
-    assert args.conv in ['deconv', 'coord', 'gen-coor']
+    assert args.conv in ['deconv', 'coord', 'gen-coord']
 
     train_set, test_set, train_onehot, test_onehot, train_orig, test_orig = load_dataset(args.dataset)
 
