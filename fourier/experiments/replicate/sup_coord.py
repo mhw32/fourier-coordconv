@@ -13,26 +13,51 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from sklearn.model_selection import train_test_split
 from ..models import CoordConv2d as OurCoordConv2d
+from ..utils import elbo, AverageMeter, merge_args_with_dict
+from ..config import CONFIG
 
 # Simple CNN Model
 class Net(nn.Module):
-    def __init__(self):
+    def __init__(self, type):
         super(Net, self).__init__()
-        # self.coordconv = CoordConv2d(2, 32, 1, with_r=True)
-        self.coordconv = OurCoordConv2d(2, 32, 1, with_r=True)
-        self.conv1 = nn.Conv2d(32, 64, 1)
-        self.conv2 = nn.Conv2d(64, 64, 1)
-        self.conv3 = nn.Conv2d(64,  1, 1)
-        self.conv4 = nn.Conv2d( 1,  1, 1)
+        self.type = type
+        if self.type == 'coord':
+            # self.coordconv = CoordConv2d(2, 32, 1, with_r=True)
+            self.coordconv = OurCoordConv2d(2, 32, 1, with_r=True)
+            self.conv1 = nn.Conv2d(32, 64, 1)
+            self.conv2 = nn.Conv2d(64, 64, 1)
+            self.conv3 = nn.Conv2d(64,  1, 1)
+            self.conv4 = nn.Conv2d( 1,  1, 1)
+        elif self.type == 'deconv':
+            self.deconv1 = nn.ConvTranspose2d(2, 128, 2, stride=2)
+            self.deconv2 = nn.ConvTranspose2d(128, 128, 2, stride=2)
+            self.deconv3 = nn.ConvTranspose2d(128, 128, 2, stride=2)
+            self.deconv4 = nn.ConvTranspose2d(128, 64, 2, stride=2)
+            self.deconv5 = nn.ConvTranspose2d(64, 64, 2, stride=2)
+            self.deconv6 = nn.ConvTranspose2d(64, 1, 2, stride=2)
+        else:
+            raise Exception('Invalid Conv Type')
 
     def forward(self, x):
-        x = self.coordconv(x)
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
-        x = F.relu(self.conv3(x))
-        x = self.conv4(x)
-        x = x.view(-1, 64*64)
-        return x
+        if self.type == 'coord':
+            x = self.coordconv(x)
+            x = F.relu(self.conv1(x))
+            x = F.relu(self.conv2(x))
+            x = F.relu(self.conv3(x))
+            x = self.conv4(x)
+            x = x.view(-1, 64*64)
+            return x
+        else if self.type == 'deconv':
+            x = self.deconv1(x)
+            x = self.deconv2(x)
+            x = self.deconv3(x)
+            x = self.deconv4(x)
+            x = self.deconv5(x)
+            x = self.deconv6(x)
+            x = x.view(-1, 64*64)
+            return x
+        else:
+            raise Exception('Invalid Conv Type')
 
 def cross_entropy_one_hot(input, target):
     _, labels = target.max(dim=1)
@@ -184,6 +209,9 @@ def load_dataset(datatype):
             test_set[i, 0, 0, 0] = x
             test_set[i, 1, 0, 0] = y
 
+        train_set_orig = train_set
+        test_set_orig = test_set
+
         train_set = np.tile(train_set, [1, 1, 64, 64])
         test_set = np.tile(test_set, [1, 1, 64, 64])
 
@@ -211,7 +239,7 @@ def load_dataset(datatype):
 
         print('Train set : ', train_set.shape, train_set.max(), train_set.min())
         print('Test set : ', test_set.shape, test_set.max(), test_set.min())
-        return train_set, test_set, train_onehot, test_onehot
+        return train_set, test_set, train_onehot, test_onehot, train_set_orig, test_set_orig
 
 def train(epoch, net, train_dataloader, optimizer, criterion, device):
     net.train()
@@ -259,10 +287,21 @@ if __name__ == '__main__':
     np.random.seed(0)
     torch.manual_seed(0)
 
-    # retrieve datasets
-    datatype = 'uniform' #'quadrant'  # 
-    assert datatype in ['uniform', 'quadrant']
-    train_set, test_set, train_onehot, test_onehot = load_dataset(datatype)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('dataset', type=str,
+                        help='uniform|quadrant')
+    parser.add_argument('conv', type=strr,
+                        help='deconv|coord')
+    parser.add_argument('--cuda', action='store_true', default=False,
+                        help='enables CUDA training')
+    args = parser.parse_args()
+    args.cuda = args.cuda and torch.cuda.is_available()
+
+    assert args.dataset in ['uniform', 'quadrant']
+    assert args.conv in ['deconv', 'coord']
+
+    train_set, test_set, train_onehot, test_onehot, train_orig, test_orig = load_dataset(args.datatype)
 
     # flattent datasets
     train_onehot = train_onehot.reshape((-1, 64 * 64)).astype('int64')
@@ -270,19 +309,34 @@ if __name__ == '__main__':
 
     # initialize network
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    net = Net().to(device)
+    net = Net(args.conv).to(device)
 
-    # train data
-    train_tensor_x = torch.stack([torch.Tensor(i) for i in train_set])
-    train_tensor_y = torch.stack([torch.LongTensor(i) for i in train_onehot])
-    train_dataset = utils.TensorDataset(train_tensor_x,train_tensor_y)
-    train_dataloader = utils.DataLoader(train_dataset, batch_size=32, shuffle=False)
+    if args.conv == 'coord':
+        # train data
+        train_tensor_x = torch.stack([torch.Tensor(i) for i in train_set])
+        train_tensor_y = torch.stack([torch.LongTensor(i) for i in train_onehot])
+        train_dataset = utils.TensorDataset(train_tensor_x,train_tensor_y)
+        train_dataloader = utils.DataLoader(train_dataset, batch_size=32, shuffle=False)
 
-    # test data 
-    test_tensor_x = torch.stack([torch.Tensor(i) for i in test_set])
-    test_tensor_y = torch.stack([torch.LongTensor(i) for i in test_onehot])
-    test_dataset = utils.TensorDataset(test_tensor_x,test_tensor_y)
-    test_dataloader = utils.DataLoader(test_dataset, batch_size=32, shuffle=False)
+        # test data 
+        test_tensor_x = torch.stack([torch.Tensor(i) for i in test_set])
+        test_tensor_y = torch.stack([torch.LongTensor(i) for i in test_onehot])
+        test_dataset = utils.TensorDataset(test_tensor_x,test_tensor_y)
+        test_dataloader = utils.DataLoader(test_dataset, batch_size=32, shuffle=False)
+    elif args.conv == 'deconv':
+         # train data
+        train_tensor_x = torch.stack([torch.Tensor(i) for i in train_orig])
+        train_tensor_y = torch.stack([torch.LongTensor(i) for i in train_onehot])
+        train_dataset = utils.TensorDataset(train_tensor_x,train_tensor_y)
+        train_dataloader = utils.DataLoader(train_dataset, batch_size=32, shuffle=False)
+
+        # test data 
+        test_tensor_x = torch.stack([torch.Tensor(i) for i in test_orig])
+        test_tensor_y = torch.stack([torch.LongTensor(i) for i in test_onehot])
+        test_dataset = utils.TensorDataset(test_tensor_x,test_tensor_y)
+        test_dataloader = utils.DataLoader(test_dataset, batch_size=32, shuffle=False)       
+    else:
+        raise Exception('Invalid Conv Type')
 
     # train model
     optimizer = torch.optim.Adam(net.parameters(), lr=1e-3)
