@@ -290,6 +290,7 @@ def train(epoch, net, train_dataloader, optimizer, criterion, device):
 
 
 def test(net, test_loader, optimizer, criterion, device):
+    import pdb; pdb.set_trace()
     net.eval()
     test_loss = 0
     correct = 0
