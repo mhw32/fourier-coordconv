@@ -45,21 +45,12 @@ class ApplyFourierCoordinates(object):
         """
         batch_size, c_dim, x_dim, y_dim = image.size()
 
-        xx_channel = torch.arange(x_dim).repeat(1, y_dim, 1)
-        yy_channel = torch.arange(y_dim).repeat(1, x_dim, 1).transpose(1, 2)
-
-        # need number of channels
-        xx_channel = xx_channel.repeat(c_dim, 1, 1)
-        yy_channel = yy_channel.repeat(c_dim, 1, 1)
-
-        xx_channel = xx_channel.float()
-        yy_channel = yy_channel.float()
-
+        # add fourier transformation
+        xx_channel, yy_channel = fourier_encoding(x_dim, c_dim)
+        xx_channel = xx_channel.unsqueeze(0)
+        yy_channel = yy_channel.unsqueeze(0)
         xx_channel = xx_channel.repeat(batch_size, 1, 1, 1)
         yy_channel = yy_channel.repeat(batch_size, 1, 1, 1)
-
-        # add fourier transformation
-        xx_channel, yy_channel = fourier_encoding(xx_channel, yy_channel)
 
         # cast to CUDA
         xx_channel = xx_channel.to(image.device)
@@ -115,6 +106,7 @@ class AddFourierCoordConvTranspose2d(nn.Module):
 
         return x
 
+
 class ConcatFourierCoordinates(ApplyFourierCoordinates):
     def incorportate_fourier_coords(self, image, xx_channel, yy_channel):
         """ Concatenation """
@@ -161,23 +153,18 @@ class ConcatFourierCoordConvTranspose2d(nn.Module):
 
         return x
 
-def fourier_encoding(xx_positions, yy_positions):
+def fourier_encoding(image_size, d_hid):
     r"""Given a matrix of positions, convert to sine/cosine 
     frequencies using odd/even positions.
 
         PE(pos, 2i)   = sin(pos/10000^(2i/d))
         PE(pos, 2i+1) = cos(pos/10000^(2i/d))
     """
-    # let d be the number of channels
-    _, d_hid, image_size, _ = xx_positions.size()
-    xx_positions_npy = xx_positions.numpy()
-    yy_positions_npy = yy_positions.numpy()
-
-    def get_sinusoid_encoding_table(n_position, d_hid):
+    def get_sinusoid_encoding_table(n_position, d_hid, period=100):
 	''' Sinusoid position encoding table '''
 
         def cal_angle(position, hid_idx):
-            return position / np.power(10000, 2 * (hid_idx // 2) / d_hid)
+            return position / np.power(period, 2 * (hid_idx // 2) / d_hid)
 
         def get_posi_angle_vec(position):
             return [cal_angle(position, hid_j) for hid_j in range(d_hid)]
