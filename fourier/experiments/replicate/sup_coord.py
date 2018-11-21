@@ -236,6 +236,7 @@ def test(net, test_loader, optimizer, criterion, device):
     test_loss = 0
     correct = 0
     pred_logits = torch.tensor([])
+    import pdb; pdb.set_trace()
     for data, target in test_loader:
         with torch.no_grad():
             data, target = data.to(device), target.to(device)
@@ -260,7 +261,7 @@ if __name__ == '__main__':
     torch.manual_seed(0)
 
     # retrieve datasets
-    datatype = 'quadrant'  # 'uniform'
+    datatype = 'uniform' #'quadrant'  # 
     assert datatype in ['uniform', 'quadrant']
     train_set, test_set, train_onehot, test_onehot = load_dataset(datatype)
 
