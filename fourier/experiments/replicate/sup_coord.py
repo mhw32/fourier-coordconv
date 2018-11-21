@@ -36,7 +36,16 @@ class Net(nn.Module):
             self.deconv5 = nn.ConvTranspose2d(64, 64, 2, stride=2)
             self.deconv6 = nn.ConvTranspose2d(64, 1, 2, stride=2)
         elif self.type == 'gen-coord':
-            pass
+            self.coordconv = OurCoordConv2d(2, 32, 1, with_r=True)
+            self.conv1 = nn.Conv2d(32, 64, 1)
+            self.conv2 = nn.Conv2d(64, 64, 1)
+            self.conv3 = nn.Conv2d(64,  1, 1)
+            self.conv4 = nn.Conv2d( 1,  1, 1)
+            self.conv5 = nn.Conv2d(1, 16, 2)
+            self.conv6 = nn.Conv2d(16, 16, 2)
+            self.conv6 = nn.Conv2d(16, 32, 2)
+            self.conv7 = nn.Conv2d(32, 32, 2)
+            self.conv8 = nn.Conv2d(1, 1, 1)
         else:
             raise Exception('Invalid Conv Type')
 
@@ -59,11 +68,25 @@ class Net(nn.Module):
             x = x.view(-1, 64*64)
             return x
         elif self.type == 'gen-coord':
-            return x
+            x = self.coordconv(x)
+            x = F.relu(self.conv1(x))
+            x = F.relu(self.conv2(x))
+            x = F.relu(self.conv3(x))
+            x = self.conv4(x)
+            x = F.relu(self.conv5(x))
+            x = F.relu(self.conv6(x))
+            x = F.relu(self.conv7(x))
+            x = self.conv8(x)
+            x = x.view(-1, 64*64)
         else:
             raise Exception('Invalid Conv Type')
 
 def cross_entropy_one_hot(input, target):
+    _, labels = target.max(dim=1)
+    return nn.CrossEntropyLoss()(input, labels)
+
+def sigmoid_cross_entropy_one_hot(input, target):
+    input = nn.Sigmoid(input)
     _, labels = target.max(dim=1)
     return nn.CrossEntropyLoss()(input, labels)
 
@@ -332,6 +355,9 @@ if __name__ == '__main__':
         test_tensor_y = torch.stack([torch.LongTensor(i) for i in test_onehot])
         test_dataset = utils.TensorDataset(test_tensor_x,test_tensor_y)
         test_dataloader = utils.DataLoader(test_dataset, batch_size=32, shuffle=False)
+
+        # Criterion
+        criterion = cross_entropy_one_hot
     elif args.conv == 'deconv':
          # train data
         train_tensor_x = torch.stack([torch.Tensor(i) for i in train_orig])
@@ -344,6 +370,9 @@ if __name__ == '__main__':
         test_tensor_y = torch.stack([torch.LongTensor(i) for i in test_onehot])
         test_dataset = utils.TensorDataset(test_tensor_x,test_tensor_y)
         test_dataloader = utils.DataLoader(test_dataset, batch_size=32, shuffle=False)
+
+        # Criterion
+        criterion = cross_entropy_one_hot
     elif args.conv == 'gen-coord':
         # train data
         train_tensor_x = torch.stack([torch.Tensor(i) for i in train_set])
@@ -355,13 +384,15 @@ if __name__ == '__main__':
         test_tensor_x = torch.stack([torch.Tensor(i) for i in test_set])
         test_tensor_y = torch.stack([torch.LongTensor(i) for i in test_onehot])
         test_dataset = utils.TensorDataset(test_tensor_x,test_tensor_y)
-        test_dataloader = utils.DataLoader(test_dataset, batch_size=32, shuffle=False)           
+        test_dataloader = utils.DataLoader(test_dataset, batch_size=32, shuffle=False)
+
+        # Criterion
+        criterion = sigmoid_cross_entropy_one_hot        
     else:
         raise Exception('Invalid Conv Type')
 
     # train model
     optimizer = torch.optim.Adam(net.parameters(), lr=1e-3)
-    criterion = cross_entropy_one_hot
     epochs = args.epochs
     for epoch in range(1, epochs + 1):
         train(epoch, net, train_dataloader, optimizer, criterion, device)
