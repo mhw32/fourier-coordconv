@@ -49,7 +49,7 @@ def build_dataset(name, data_dir, train=True):
     elif name == 'PerturbMNIST':
         if train:
             return MultiMNIST(data_dir, train=train,
-                              transform=reshape_and_binarize)
+                              transform=dynamic_binarize)
         else:
             return load_dynamic_multimnist_test_set(data_dir)
     elif name == 'FashionMNIST':
@@ -84,10 +84,3 @@ def dynamic_binarize(x):
     x = torch.bernoulli(x)
     return x
 
-
-def reshape_and_binarize(x):
-    f = transforms.Compose([transforms.Resize(32),
-                            transforms.ToTensor()])
-    x = f(x)
-    x = torch.bernoulli(x)
-    return x

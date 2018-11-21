@@ -150,12 +150,11 @@ if __name__ == "__main__":
         is_best = test_acc > best_acc
         best_acc = max(test_acc, best_acc)
 
-        if args.save_checkpoint:
-            save_checkpoint({
-                'state_dict': model.state_dict(),
-                'optimizer_state_dict' : optimizer.state_dict(),
-                'cmd_line_args': args,
-            }, is_best, folder=args.out_dir)
+        save_checkpoint({
+            'state_dict': model.state_dict(),
+            'optimizer_state_dict' : optimizer.state_dict(),
+            'cmd_line_args': args,
+        }, is_best, folder=args.out_dir)
         
         np.save(os.path.join(args.out_dir, 'loss.npy'), track_loss)
         np.save(os.path.join(args.out_dir, 'accuracy.npy'), track_accuracy)

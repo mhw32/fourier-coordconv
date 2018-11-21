@@ -12,12 +12,14 @@ import torch.nn.functional as F
 
 from torch.autograd import Variable
 from sklearn.model_selection import train_test_split
+from ..models import CoordConv2d as OurCoordConv2d
 
 # Simple CNN Model
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.coordconv = CoordConv2d(2, 32, 1, with_r=True)
+        # self.coordconv = CoordConv2d(2, 32, 1, with_r=True)
+        self.coordconv = OurCoordConv2d(2, 32, 1, with_r=True)
         self.conv1 = nn.Conv2d(32, 64, 1)
         self.conv2 = nn.Conv2d(64, 64, 1)
         self.conv3 = nn.Conv2d(64,  1, 1)
@@ -258,7 +260,7 @@ if __name__ == '__main__':
     torch.manual_seed(0)
 
     # retrieve datasets
-    datatype = 'uniform'
+    datatype = 'quadrant'  # 'uniform'
     assert datatype in ['uniform', 'quadrant']
     train_set, test_set, train_onehot, test_onehot = load_dataset(datatype)
 
