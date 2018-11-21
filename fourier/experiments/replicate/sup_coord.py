@@ -47,7 +47,7 @@ class Net(nn.Module):
             x = self.conv4(x)
             x = x.view(-1, 64*64)
             return x
-        else if self.type == 'deconv':
+        elif self.type == 'deconv':
             x = self.deconv1(x)
             x = self.deconv2(x)
             x = self.deconv3(x)
@@ -209,8 +209,8 @@ def load_dataset(datatype):
             test_set[i, 0, 0, 0] = x
             test_set[i, 1, 0, 0] = y
 
-        train_set_orig = train_set
-        test_set_orig = test_set
+        train_set_orig = train_set / (64. - 1.)
+        test_set_orig = test_set / (64. - 1.)
 
         train_set = np.tile(train_set, [1, 1, 64, 64])
         test_set = np.tile(test_set, [1, 1, 64, 64])
@@ -221,14 +221,17 @@ def load_dataset(datatype):
 
         print('Train set : ', train_set.shape, train_set.max(), train_set.min())
         print('Test set : ', test_set.shape, test_set.max(), test_set.min())
-        return train_set, test_set, train_onehot, test_onehot
+        return train_set, test_set, train_onehot, test_onehot, train_set_orig, test_set_orig
     else:
         # Load the one hot datasets and the train / test set
-        train_set = np.load(os.path.join(os.path.dir_name(__file__), 'data-quadrant/train_set.npy')).astype('float32')
-        test_set = np.load(os.path.join(os.path.dir_name(__file__), 'data-quadrant/test_set.npy')).astype('float32')
+        train_set = np.load(os.path.join(os.path.dirname(__file__), 'data-quadrant/train_set.npy')).astype('float32')
+        test_set = np.load(os.path.join(os.path.dirname(__file__), 'data-quadrant/test_set.npy')).astype('float32')
 
-        train_onehot = np.load(os.path.join(os.path.dir_name(__file__), 'data-quadrant/train_onehot.npy')).astype('float32')
-        test_onehot = np.load(os.path.join(os.path.dir_name(__file__), 'data-quadrant/test_onehot.npy')).astype('float32')
+        train_onehot = np.load(os.path.join(os.path.dirname(__file__), 'data-quadrant/train_onehot.npy')).astype('float32')
+        test_onehot = np.load(os.path.join(os.path.dirname(__file__), 'data-quadrant/test_onehot.npy')).astype('float32')
+
+        train_set_orig = train_set/train_set.max()
+        test_set_orig = test_set/test_set.max()
 
         train_set = np.tile(train_set, [1, 1, 64, 64])
         test_set = np.tile(test_set, [1, 1, 64, 64])
@@ -291,8 +294,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset', type=str,
                         help='uniform|quadrant')
-    parser.add_argument('conv', type=strr,
+    parser.add_argument('conv', type=str,
                         help='deconv|coord')
+    parser.add_argument('epochs', type=int,
+                        help='num training epochs')
     parser.add_argument('--cuda', action='store_true', default=False,
                         help='enables CUDA training')
     args = parser.parse_args()
@@ -301,7 +306,7 @@ if __name__ == '__main__':
     assert args.dataset in ['uniform', 'quadrant']
     assert args.conv in ['deconv', 'coord']
 
-    train_set, test_set, train_onehot, test_onehot, train_orig, test_orig = load_dataset(args.datatype)
+    train_set, test_set, train_onehot, test_onehot, train_orig, test_orig = load_dataset(args.dataset)
 
     # flattent datasets
     train_onehot = train_onehot.reshape((-1, 64 * 64)).astype('int64')
@@ -341,7 +346,7 @@ if __name__ == '__main__':
     # train model
     optimizer = torch.optim.Adam(net.parameters(), lr=1e-3)
     criterion = cross_entropy_one_hot
-    epochs = 10
+    epochs = args.epochs
     for epoch in range(1, epochs + 1):
         train(epoch, net, train_dataloader, optimizer, criterion, device)
 
