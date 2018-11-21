@@ -54,20 +54,14 @@ def load_dynamic_mnist_test_set(data_dir):
 
 def load_dynamic_multimnist_test_set(data_dir):
     # initial load we can take advantage of the dataloader
-    f = transforms.Compose([transforms.Resize(32),
-                            transforms.ToTensor()])
     test_loader = data.DataLoader(
-        MultiMNIST(data_dir, train=False, transform=f),
+        MultiMNIST(data_dir, train=False, transform=transforms.ToTensor()),
         batch_size=100, shuffle=True)
 
     # load it back into numpy tensors...
-    x_test, y_test = [], []
-    for image, label in test_loader:
-        x_test.append(image)
-        y_test.append(label)
-
-    x_test = torch.cat(x_test, dim=0).numpy()
-    y_test = torch.cat(y_test, dim=0).numpy()
+    x_test = test_loader.dataset.test_data.float().numpy()
+    y_test = torch.stack([t[0] for t in test_loader.dataset.test_labels])
+    y_test = y_test.numpy()
 
     # binarize once!!! (we don't dynamically binarize this)
     np.random.seed(777)

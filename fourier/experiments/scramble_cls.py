@@ -8,10 +8,13 @@ import os
 import sys
 import numpy as np
 from tqdm import tqdm
+from sklearn.metrics import accuracy_score
 
 import torch
+import torch.nn.functional as F
 from .models import Classifier
 from .datasets import build_dataset
+from .utils import AverageMeter
 from . import (SUP_DATA_OPTIONS, DATA_SHAPE, DATA_DIR, DATA_DIST, 
                 DATA_LABEL_NUM, DATA_LABEL_DIST)
 
@@ -30,7 +33,7 @@ if __name__ == "__main__":
 
     checkpoint = torch.load(args.checkpoint_path)
     state_dict = checkpoint['state_dict']
-    train_args = checkpoint['args']
+    train_args = checkpoint['cmd_line_args']
 
     # for reproducibility
     torch.manual_seed(train_args.seed)
@@ -46,11 +49,12 @@ if __name__ == "__main__":
     model = Classifier(n_channels, image_size, DATA_LABEL_NUM[train_args.dataset], 
                         n_filters=train_args.n_filters, hidden_dim=train_args.hidden_dim, 
                         conv=train_args.conv, label_dist=DATA_LABEL_DIST[train_args.dataset])
-    model = model.load_state_dict(state_dict)
+    model.load_state_dict(state_dict)
     if args.scramble:
-        model.conv_layers[0].scramble = True
+        model.encoder.conv_layers[0].coord_adder.scramble = True
     model = model.to(device)
 
+    accuracy_meter = AverageMeter()
     with torch.no_grad():
         pbar = tqdm(total=len(test_loader))
         for data, label in test_loader:
@@ -68,5 +72,4 @@ if __name__ == "__main__":
             pbar.update()
         pbar.close()
 
-    print('====> Test Epoch: {}\tAccuracy: {:.4f}'.format(
-        epoch, accuracy_meter.avg))
+    print('====> Test Accuracy: {:.4f}'.format(accuracy_meter.avg))

@@ -12,7 +12,7 @@ import torch.nn.functional as F
 
 from torch.autograd import Variable
 from sklearn.model_selection import train_test_split
-from .models import CoordConv2d as OurCoordConv2d
+from ..models import CoordConv2d as OurCoordConv2d
 
 # Simple CNN Model
 class Net(nn.Module):
@@ -260,7 +260,7 @@ if __name__ == '__main__':
     torch.manual_seed(0)
 
     # retrieve datasets
-    datatype = 'uniform'
+    datatype = 'quadrant'  # 'uniform'
     assert datatype in ['uniform', 'quadrant']
     train_set, test_set, train_onehot, test_onehot = load_dataset(datatype)
 

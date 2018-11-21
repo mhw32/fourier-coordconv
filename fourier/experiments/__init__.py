@@ -8,7 +8,7 @@ DIST_OPTIONS = ['bernoulli', 'gaussian']
 LABEL_OPTIONS = ['bernoulli', 'categorical']
 DATA_SHAPE = {
     'DynamicMNIST': (1, 28, 28),
-    'PerturbMNIST': (1, 32, 32),
+    'PerturbMNIST': (1, 64, 64),
     'FashionMNIST': (1, 28, 28),
     'Histopathology': (1, 28, 28),
     'CelebA': (3, 32, 32),

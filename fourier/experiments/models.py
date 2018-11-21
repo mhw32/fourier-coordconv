@@ -259,8 +259,13 @@ class AddCoordinates(object):
         if self.scramble:
             xx_channel_npy = xx_channel.numpy()
             yy_channel_npy = yy_channel.numpy()
+            c, h, w = xx_channel_npy.shape
+            xx_channel_npy = xx_channel_npy.reshape(c * h * w)
+            yy_channel_npy = yy_channel_npy.reshape(c * h * w)
             np.random.shuffle(xx_channel_npy)
             np.random.shuffle(yy_channel_npy)
+            xx_channel_npy = xx_channel_npy.reshape(c, h, w)
+            yy_channel_npy = yy_channel_npy.reshape(c, h, w)
             xx_channel = torch.from_numpy(xx_channel_npy)
             yy_channel = torch.from_numpy(yy_channel_npy)
 
@@ -498,7 +503,7 @@ class Encoder(nn.Module):
     def __init__(self, n_channels, image_size, z_dim, n_filters=64, conv='vanilla'):
         super(Encoder, self).__init__()
         assert conv in CONV_OPTIONS, "conv %s not supported." % conv
-        assert image_size in [28, 32], "reshape image to be either 28x28 or 32x32"
+        assert image_size in [28, 32, 64], "reshape image to be either 28x28 or 32x32"
 
         self.z_dim = z_dim
         self.n_channels = n_channels
@@ -509,13 +514,10 @@ class Encoder(nn.Module):
             self.conv_layers = gen_28_conv_layers(
                 CONV_FUNCS[conv], self.n_channels, self.n_filters)
             self.cout = gen_28_conv_output_dim(self.image_size)
-        elif self.image_size == 32:
+        elif self.image_size % 32 == 0:
             self.conv_layers = gen_32_conv_layers(
                 CONV_FUNCS[conv], self.n_channels, self.n_filters)
             self.cout = gen_32_conv_output_dim(self.image_size)
-        elif self.image_size == 64:
-            self.conv_layers = gen_64_conv_layers(
-                CONV_FUNCS[conv], self.n_channels, self.n_filters)
         else:
             raise Exception('image_size %d not supported.' % self.image_size)
         
@@ -568,7 +570,7 @@ class Decoder(nn.Module):
             self.conv_layers = gen_28_deconv_layers(CONV_FUNCS[conv], CONV_TRANS_FUNCS[conv], 
                                                     self.n_channels, self.n_filters, dist=self.dist)
             self.cout = gen_28_conv_output_dim(self.image_size)
-        elif self.image_size == 32:
+        elif self.image_size % 32 == 0:
             self.conv_layers = gen_32_deconv_layers(CONV_FUNCS[conv], CONV_TRANS_FUNCS[conv], 
                                                     self.n_channels, self.n_filters, dist=self.dist)
             self.cout = gen_32_conv_output_dim(self.image_size)
