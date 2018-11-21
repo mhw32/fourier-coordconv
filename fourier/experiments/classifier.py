@@ -17,7 +17,7 @@ import torch.nn.functional as F
 from torchvision import transforms
 from sklearn.metrics import accuracy_score
 
-from .utils import AverageMeter, merge_args_with_dict
+from .utils import AverageMeter, merge_args_with_dict, save_checkpoint
 from .datasets import build_dataset
 from .models import Classifier
 from .config import CONFIG
@@ -136,6 +136,7 @@ if __name__ == "__main__":
 
     track_loss = np.zeros((args.epochs, 2))
     track_accuracy = np.zeros((args.epochs, 2))
+    best_acc = 0
     
     for epoch in range(1, args.epochs + 1):
         train_loss, train_acc = train(epoch)
@@ -145,6 +146,16 @@ if __name__ == "__main__":
         track_loss[epoch - 1, 1] = test_loss
         track_accuracy[epoch - 1, 0] = train_acc
         track_accuracy[epoch - 1, 1] = test_acc
+
+        is_best = test_acc > best_acc
+        best_acc = max(test_acc, best_acc)
+
+        if args.save_checkpoint:
+            save_checkpoint({
+                'state_dict': model.state_dict(),
+                'optimizer_state_dict' : optimizer.state_dict(),
+                'cmd_line_args': args,
+            }, is_best, folder=args.out_dir)
         
         np.save(os.path.join(args.out_dir, 'loss.npy'), track_loss)
         np.save(os.path.join(args.out_dir, 'accuracy.npy'), track_accuracy)

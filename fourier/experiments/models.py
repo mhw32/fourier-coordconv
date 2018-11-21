@@ -35,6 +35,10 @@ class ApplyFourierCoordinates(object):
         - Input: `(N, C_{in}, H_{in}, W_{in})`
         - Output: `(N, (C_{in} + 2), H_{in}, W_{in})`
     """
+    def __init__(self, scramble=False):
+        super(ApplyFourierCoordinates, self).__init__()
+        self.scramble = scramble
+
     def incorportate_fourier_coords(self, image, xx_channel, yy_channel):
         raise Exception('Must be implemented in subclass')
 
@@ -43,10 +47,19 @@ class ApplyFourierCoordinates(object):
         Args:
             image: shape(batch, channel, x_dim, y_dim)
         """
-        batch_size, c_dim, x_dim, y_dim = image.size()
+        batch_size, c_dim, x_dim, _ = image.size()
 
         # add fourier transformation
         xx_channel, yy_channel = fourier_encoding(x_dim, c_dim)
+
+        if self.scramble:
+            xx_channel_npy = xx_channel.numpy()
+            yy_channel_npy = yy_channel.numpy()
+            np.random.shuffle(xx_channel_npy)
+            np.random.shuffle(yy_channel_npy)
+            xx_channel = torch.from_numpy(xx_channel_npy)
+            yy_channel = torch.from_numpy(yy_channel_npy)
+
         xx_channel = xx_channel.unsqueeze(0)
         yy_channel = yy_channel.unsqueeze(0)
         xx_channel = xx_channel.repeat(batch_size, 1, 1, 1)
@@ -68,7 +81,8 @@ class AddFourierCoordinates(ApplyFourierCoordinates):
 
 class AddFourierCoordConv2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size,
-                 stride=1, padding=0, dilation=1, groups=1, bias=True):
+                 stride=1, padding=0, dilation=1, groups=1, bias=True,
+                 scramble=False):
         super(AddFourierCoordConv2d, self).__init__()
 
         self.conv_layer = nn.Conv2d(in_channels, out_channels,
@@ -76,7 +90,7 @@ class AddFourierCoordConv2d(nn.Module):
                                     padding=padding, dilation=dilation,
                                     groups=groups, bias=bias)
 
-        self.coord_applier = AddFourierCoordinates()
+        self.coord_applier = AddFourierCoordinates(scramble=scramble)
 
     def forward(self, x):
         x = self.coord_applier(x)
@@ -88,7 +102,7 @@ class AddFourierCoordConv2d(nn.Module):
 class AddFourierCoordConvTranspose2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size,
                  stride=1, padding=0, output_padding=0, groups=1, bias=True,
-                 dilation=1):
+                 dilation=1, scramble=False):
         super(AddFourierCoordConvTranspose2d, self).__init__()
 
         self.conv_tr_layer = nn.ConvTranspose2d(in_channels, out_channels,
@@ -98,7 +112,7 @@ class AddFourierCoordConvTranspose2d(nn.Module):
                                                 groups=groups, bias=bias,
                                                 dilation=dilation)
 
-        self.coord_applier = AddFourierCoordinates()
+        self.coord_applier = AddFourierCoordinates(scramble=scramble)
 
     def forward(self, x):
         x = self.coord_applier(x)
@@ -115,7 +129,8 @@ class ConcatFourierCoordinates(ApplyFourierCoordinates):
 
 class ConcatFourierCoordConv2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size,
-                 stride=1, padding=0, dilation=1, groups=1, bias=True):
+                 stride=1, padding=0, dilation=1, groups=1, bias=True,
+                 scramble=False):
         super(ConcatFourierCoordConv2d, self).__init__()
         in_channels *= 3
         self.conv_layer = nn.Conv2d(in_channels, out_channels,
@@ -123,7 +138,7 @@ class ConcatFourierCoordConv2d(nn.Module):
                                     padding=padding, dilation=dilation,
                                     groups=groups, bias=bias)
 
-        self.coord_applier = ConcatFourierCoordinates()
+        self.coord_applier = ConcatFourierCoordinates(scramble=scramble)
 
     def forward(self, x):
         x = self.coord_applier(x)
@@ -135,7 +150,7 @@ class ConcatFourierCoordConv2d(nn.Module):
 class ConcatFourierCoordConvTranspose2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size,
                  stride=1, padding=0, output_padding=0, groups=1, bias=True,
-                 dilation=1):
+                 dilation=1, scramble=False):
         super(ConcatFourierCoordConvTranspose2d, self).__init__()
         in_channels *= 3
         self.conv_tr_layer = nn.ConvTranspose2d(in_channels, out_channels,
@@ -145,13 +160,14 @@ class ConcatFourierCoordConvTranspose2d(nn.Module):
                                                 groups=groups, bias=bias,
                                                 dilation=dilation)
 
-        self.coord_applier = ConcatFourierCoordinates()
+        self.coord_applier = ConcatFourierCoordinates(scramble=scramble)
 
     def forward(self, x):
         x = self.coord_applier(x)
         x = self.conv_tr_layer(x)
 
         return x
+
 
 def fourier_encoding(image_size, d_hid):
     r"""Given a matrix of positions, convert to sine/cosine 
@@ -221,8 +237,9 @@ class AddCoordinates(object):
         >>> output = coord_adder(input)
     """
 
-    def __init__(self, with_r=False):
+    def __init__(self, with_r=False, scramble=False):
         self.with_r = with_r
+        self.scramble = scramble
 
     def __call__(self, image):
         """
@@ -239,6 +256,14 @@ class AddCoordinates(object):
 
         xx_channel = xx_channel * 2 - 1
         yy_channel = yy_channel * 2 - 1
+
+        if self.scramble:
+            xx_channel_npy = xx_channel.numpy()
+            yy_channel_npy = yy_channel.numpy()
+            np.random.shuffle(xx_channel_npy)
+            np.random.shuffle(yy_channel_npy)
+            xx_channel = torch.from_numpy(xx_channel_npy)
+            yy_channel = torch.from_numpy(yy_channel_npy)
 
         xx_channel = xx_channel.repeat(batch_size, 1, 1, 1)
         yy_channel = yy_channel.repeat(batch_size, 1, 1, 1)
@@ -285,7 +310,7 @@ class CoordConv2d(nn.Module):
 
     def __init__(self, in_channels, out_channels, kernel_size,
                  stride=1, padding=0, dilation=1, groups=1, bias=True,
-                 with_r=False):
+                 with_r=False, scramble=False):
         super(CoordConv2d, self).__init__()
 
         in_channels += 2
@@ -297,7 +322,7 @@ class CoordConv2d(nn.Module):
                                     padding=padding, dilation=dilation,
                                     groups=groups, bias=bias)
 
-        self.coord_adder = AddCoordinates(with_r)
+        self.coord_adder = AddCoordinates(with_r, scramble)
 
     def forward(self, x):
         x = self.coord_adder(x)
@@ -335,7 +360,7 @@ class CoordConvTranspose2d(nn.Module):
 
     def __init__(self, in_channels, out_channels, kernel_size,
                  stride=1, padding=0, output_padding=0, groups=1, bias=True,
-                 dilation=1, with_r=False):
+                 dilation=1, with_r=False, scramble=False):
         super(CoordConvTranspose2d, self).__init__()
 
         in_channels += 2
@@ -349,7 +374,7 @@ class CoordConvTranspose2d(nn.Module):
                                                 groups=groups, bias=bias,
                                                 dilation=dilation)
 
-        self.coord_adder = AddCoordinates(with_r)
+        self.coord_adder = AddCoordinates(with_r, scramble)
 
     def forward(self, x):
         x = self.coord_adder(x)
